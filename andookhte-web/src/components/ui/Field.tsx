@@ -1,5 +1,6 @@
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
-import { useId } from 'react';
+import { useId, useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { cx } from '../../lib/format';
 
 const BASE =
@@ -58,6 +59,9 @@ export function TextField({
   label, hint, error, icon, suffix, className, ...rest
 }: TextFieldProps) {
   const id = useId();
+  const isPassword = rest.type === 'password';
+  const [revealed, setRevealed] = useState(false);
+
   return (
     <FieldShell label={label} hint={hint} error={error} icon={icon} htmlFor={id} className={className}>
       <input
@@ -65,15 +69,26 @@ export function TextField({
         className={cx(
           BASE, 'num h-12',
           icon ? 'pr-11' : '',
-          suffix ? 'pl-16' : '',
+          suffix ? 'pl-16' : isPassword ? 'pl-11' : '',
           error && 'border-rose-400/60',
         )}
         {...rest}
+        type={isPassword ? (revealed ? 'text' : 'password') : rest.type}
       />
       {suffix && (
         <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-xs text-dim">
           {suffix}
         </span>
+      )}
+      {isPassword && (
+        <button
+          type="button"
+          onClick={() => setRevealed((value) => !value)}
+          className="absolute top-1/2 left-3 -translate-y-1/2 text-dim transition hover:text-brand-500"
+          aria-label={revealed ? 'پنهان کردن رمز عبور' : 'نمایش رمز عبور'}
+        >
+          {revealed ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
       )}
     </FieldShell>
   );

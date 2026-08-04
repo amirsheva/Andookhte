@@ -8,7 +8,7 @@ import { Aurora } from '../components/Aurora';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { TextField } from '../components/ui/Field';
-import { Segmented } from '../components/ui/Segmented';
+import { Segmented, type SegmentOption } from '../components/ui/Segmented';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { cx, formatNumber, toEn } from '../lib/format';
 
@@ -81,6 +81,11 @@ function PasswordForm({ onForgot }: { onForgot: () => void }) {
 
   const isRegister = step === 'register';
 
+  const STEP_OPTIONS: SegmentOption<PasswordStep>[] = [
+    { value: 'login', label: 'ورود', rgb: '51 100 255' },
+    { value: 'register', label: 'ساخت حساب تازه', rgb: '16 185 129' },
+  ];
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -105,6 +110,15 @@ function PasswordForm({ onForgot }: { onForgot: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <Segmented
+        value={step}
+        onChange={(value) => {
+          setStep(value);
+          setError(null);
+        }}
+        options={STEP_OPTIONS}
+      />
+
       {isRegister && (
         <TextField
           label="نام و نام خانوادگی"
@@ -145,29 +159,15 @@ function PasswordForm({ onForgot }: { onForgot: () => void }) {
         {isRegister ? 'ساخت حساب' : 'ورود'}
       </Button>
 
-      <div className="flex items-center justify-between pt-1 text-xs">
+      {!isRegister && (
         <button
           type="button"
-          onClick={() => {
-            setStep(isRegister ? 'login' : 'register');
-            setError(null);
-          }}
-          className="flex items-center gap-1.5 text-dim transition hover:text-brand-500"
+          onClick={onForgot}
+          className="block w-full text-center text-xs text-dim transition hover:text-brand-500"
         >
-          {isRegister ? 'حساب دارید؟ وارد شوید' : 'حساب ندارید؟ ثبت‌نام کنید'}
-          <ArrowLeft size={13} />
+          رمز را فراموش کردید؟
         </button>
-
-        {!isRegister && (
-          <button
-            type="button"
-            onClick={onForgot}
-            className="text-dim transition hover:text-brand-500"
-          >
-            رمز را فراموش کردید؟
-          </button>
-        )}
-      </div>
+      )}
     </form>
   );
 }
