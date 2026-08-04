@@ -22,8 +22,11 @@ export function Accounts() {
   const { activeWorkspace } = useAuth();
   const [transferOpen, setTransferOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  const [editing, setEditing] = useState<Account | null>(null);
+  // شناسه نگه‌داشته می‌شود نه خودِ آبجکت، تا وقتی «اصلاح موجودی» حساب را در همان
+  // مودال به‌روزرسانی می‌کند، بدون بستن و بازکردن دوباره، عدد تازه نشان داده شود.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Account | null>(null);
+  const editingAccount = accounts.find((a) => a.id === editingId) ?? null;
 
   const canEdit = hasRole(activeWorkspace?.role, WorkspaceRole.Accountant);
   const currency = currencyLabel(accounts[0]?.currencyCode ?? activeWorkspace?.currencyCode);
@@ -102,7 +105,7 @@ export function Accounts() {
                         key: 'edit',
                         label: 'ویرایش',
                         icon: <Pencil size={14} />,
-                        onSelect: () => setEditing(account),
+                        onSelect: () => setEditingId(account.id),
                       },
                       {
                         key: 'delete',
@@ -157,12 +160,12 @@ export function Accounts() {
       </Modal>
 
       <Modal
-        open={editing !== null}
-        onClose={() => setEditing(null)}
+        open={editingId !== null}
+        onClose={() => setEditingId(null)}
         title="ویرایش حساب"
-        description={editing?.title}
+        description={editingAccount?.title}
       >
-        {editing && <AccountForm account={editing} onDone={() => setEditing(null)} />}
+        {editingAccount && <AccountForm account={editingAccount} onDone={() => setEditingId(null)} />}
       </Modal>
 
       <ConfirmDialog

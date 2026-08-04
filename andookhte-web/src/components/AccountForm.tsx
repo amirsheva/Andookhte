@@ -1,10 +1,11 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { Check, CreditCard, Landmark, Wallet } from 'lucide-react';
-import { ACCOUNT_TYPE_LABEL, AccountType, readErrorMessage, type Account } from '../api';
+import { Check, CreditCard, Landmark, PenLine, Wallet } from 'lucide-react';
+import { ACCOUNT_TYPE_LABEL, AccountType, TransactionType, readErrorMessage, type Account } from '../api';
 import { useAuth } from '../store/authContext';
 import { useFinance } from '../store/financeContext';
+import { useToast } from '../store/toastContext';
 import { BANK_OPTIONS, detectBank, isKnownBank, isValidCardNumber } from '../lib/banks';
-import { compactNumber, currencyLabel, formatCardNumber, toEn } from '../lib/format';
+import { compactNumber, currencyLabel, formatCardNumber, formatCurrency, toEn } from '../lib/format';
 import { BankCard } from './BankCard';
 import { Button } from './ui/Button';
 import { SelectField, TextField } from './ui/Field';
@@ -26,8 +27,9 @@ interface AccountFormProps {
 }
 
 export function AccountForm({ account, onDone }: AccountFormProps) {
-  const { addAccount, editAccount } = useFinance();
+  const { addAccount, editAccount, addTransaction } = useFinance();
   const { activeWorkspace } = useAuth();
+  const { showToast } = useToast();
 
   const isEdit = account !== undefined;
 
@@ -46,6 +48,11 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [fixingBalance, setFixingBalance] = useState(false);
+  const [correctBalance, setCorrectBalance] = useState('');
+  const [balanceFixBusy, setBalanceFixBusy] = useState(false);
+  const [balanceFixError, setBalanceFixError] = useState<string | null>(null);
 
   const cardDigits = toEn(cardNumber).replace(/\D/g, '').slice(0, 16);
   const numericBalance = Number(toEn(balance).replace(/[^\d]/g, '')) || 0;
@@ -69,6 +76,41 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
     cardNumber: cardDigits || undefined,
     bankName: effectiveBankName || undefined,
     transactionCount: account?.transactionCount ?? 0,
+  };
+
+  /**
+   * موجودی مستقیماً قابل ویرایش نیست — حاصل تراکنش‌هاست. اصلاح یعنی ثبت خودکار
+   * یک تراکنش هزینه/درآمد به اندازهٔ اختلاف، تا کاربر مجبور نباشد خودش تفاضل را
+   * حساب کند و دستی وارد فرم تراکنش شود.
+   */
+  const handleBalanceFix = async () => {
+    if (!account) return;
+    setBalanceFixError(null);
+
+    const target = Number(toEn(correctBalance).replace(/[^\d.-]/g, ''));
+    if (!Number.isFinite(target)) return setBalanceFixError('یک عدد معتبر وارد کنید.');
+
+    const delta = Math.round((target - account.currentBalance) * 100) / 100;
+    if (delta === 0) return setBalanceFixError('این مبلغ همان موجودی فعلی است.');
+
+    setBalanceFixBusy(true);
+    try {
+      await addTransaction({
+        type: delta > 0 ? TransactionType.Income : TransactionType.Expense,
+        amount: Math.abs(delta),
+        sourceAccountId: delta < 0 ? account.id : undefined,
+        destinationAccountId: delta > 0 ? account.id : undefined,
+        category: 'other',
+        description: 'اصلاح موجودی',
+      });
+      showToast(`موجودی به ${formatCurrency(target, account.currencyCode)} اصلاح شد`);
+      setCorrectBalance('');
+      setFixingBalance(false);
+    } catch (err) {
+      setBalanceFixError(readErrorMessage(err, 'اصلاح موجودی با خطا مواجه شد.'));
+    } finally {
+      setBalanceFixBusy(false);
+    }
   };
 
   const handleCardChange = (value: string) => {
@@ -137,12 +179,69 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
         </SelectField>
       </div>
 
-      {/* موجودی فقط در زمان ساخت قابل تعیین است */}
+      {/* موجودی فقط در زمان ساخت قابل تعیین است؛ در ویرایش با تراکنش اصلاحی درست می‌شود */}
       {isEdit ? (
-        <p className="rounded-2xl bg-slate-500/8 px-4 py-3 text-[11px] leading-relaxed text-dim dark:bg-white/5">
-          موجودی از این فرم تغییر نمی‌کند. موجودی حاصل تراکنش‌هاست؛ برای اصلاح آن یک
-          تراکنش ثبت یا ویرایش کنید تا مجموع تراکنش‌ها با موجودی بخواند.
-        </p>
+        <div className="rounded-2xl bg-slate-500/8 px-4 py-3.5 dark:bg-white/5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] text-dim">موجودی فعلی</p>
+              <p className="num mt-0.5 text-sm font-bold">
+                {formatCurrency(account.currentBalance, account.currencyCode)}
+              </p>
+            </div>
+            {!fixingBalance && (
+              <button
+                type="button"
+                onClick={() => setFixingBalance(true)}
+                className="glass-soft flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-medium text-dim transition hover:text-[var(--text-strong)]"
+              >
+                <PenLine size={13} />
+                اصلاح موجودی
+              </button>
+            )}
+          </div>
+
+          {fixingBalance && (
+            <div className="mt-3.5 space-y-3 border-t border-slate-500/10 pt-3.5">
+              <p className="text-[11px] leading-relaxed text-dim">
+                موجودی مستقیم ویرایش نمی‌شود چون حاصل تراکنش‌هاست. با تعیین عدد صحیح،
+                یک تراکنش اصلاحی به اندازهٔ اختلاف خودکار ثبت می‌شود.
+              </p>
+              <TextField
+                label="موجودی صحیح"
+                inputMode="numeric"
+                placeholder="۰"
+                value={correctBalance}
+                onChange={(event) => setCorrectBalance(event.target.value)}
+                suffix={currencyLabel(account.currencyCode)}
+              />
+              {balanceFixError && <p className="text-[11px] text-rose-500">{balanceFixError}</p>}
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  loading={balanceFixBusy}
+                  onClick={() => void handleBalanceFix()}
+                  className="flex-1"
+                >
+                  ثبت اصلاح
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setFixingBalance(false);
+                    setCorrectBalance('');
+                    setBalanceFixError(null);
+                  }}
+                >
+                  انصراف
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       ) : (
         <div>
           <TextField

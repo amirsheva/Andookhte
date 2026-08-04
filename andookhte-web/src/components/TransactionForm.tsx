@@ -3,6 +3,7 @@ import { Check, Plus, Wallet } from 'lucide-react';
 import { Link } from '../router/Link';
 import { TransactionType, readErrorMessage, type Transaction } from '../api';
 import { useFinance } from '../store/financeContext';
+import { useToast } from '../store/toastContext';
 import { expenseCategories, getCategory, incomeCategories } from '../lib/categories';
 import { compactNumber, currencyLabel, cx, formatNumber, toEn } from '../lib/format';
 import { Button } from './ui/Button';
@@ -24,6 +25,7 @@ export function TransactionForm({
   transaction,
 }: TransactionFormProps) {
   const { accounts, addTransaction, editTransaction } = useFinance();
+  const { showToast } = useToast();
 
   const isEdit = transaction !== undefined;
 
@@ -87,6 +89,14 @@ export function TransactionForm({
       } else {
         await addTransaction(payload);
       }
+
+      const typeLabel =
+        type === TransactionType.Income ? 'درآمد' : type === TransactionType.Expense ? 'هزینه' : 'انتقال';
+      const categoryLabel = !isTransfer ? ` · ${getCategory(payload.category).label}` : '';
+      const currency = currencyLabel(accounts[0]?.currencyCode);
+      showToast(
+        `${formatNumber(numericAmount)} ${currency} ${typeLabel}${categoryLabel} ${isEdit ? 'ویرایش شد' : 'ثبت شد'}`,
+      );
 
       setSuccess(true);
       setTimeout(() => {

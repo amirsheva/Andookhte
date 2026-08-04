@@ -3,6 +3,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Router } from './router/Router';
 import { useRouter } from './router/routerContext';
 import { ThemeProvider } from './store/ThemeProvider';
+import { ToastProvider } from './store/ToastProvider';
 import { AuthProvider } from './store/AuthProvider';
 import { useAuth } from './store/authContext';
 import { FinanceProvider } from './store/FinanceProvider';
@@ -118,11 +119,13 @@ function Gate() {
 export default function App() {
   return (
     <ThemeProvider>
-      <Router>
-        <AuthProvider>
-          <Gate />
-        </AuthProvider>
-      </Router>
+      <ToastProvider>
+        <Router>
+          <AuthProvider>
+            <Gate />
+          </AuthProvider>
+        </Router>
+      </ToastProvider>
     </ThemeProvider>
   );
 }
