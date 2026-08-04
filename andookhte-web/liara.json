@@ -1,0 +1,6 @@
+{
+  "//": "آدرس API در زمان ساخت داخل باندل نوشته می‌شود. اگر عوض شد، باید دوباره deploy کنید.",
+  "platform": "docker",
+  "port": 80,
+  "args": ["VITE_API_BASE_URL=https://andookhte-api.liara.run/api"]
+}

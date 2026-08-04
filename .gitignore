@@ -1,0 +1,39 @@
+# ————————————————— اسرار —————————————————
+# مهم‌ترین بخش این فایل. کلید JWT و رمز دیتابیس هرگز نباید در مخزن باشند.
+.env
+.env.local
+.env.*.local
+**/appsettings.Production.json
+**/appsettings.*.Local.json
+
+# ————————————————— خروجی ساخت —————————————————
+[Bb]in/
+[Oo]bj/
+deploy/
+publish/
+*.user
+*.suo
+
+# فرانت‌اند
+node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+
+# ————————————————— محیط توسعه —————————————————
+.vs/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ————————————————— دیتابیس محلی —————————————————
+*.db
+*.db-shm
+*.db-wal
+
+# ————————————————— لاگ —————————————————
+*.log
+npm-debug.log*

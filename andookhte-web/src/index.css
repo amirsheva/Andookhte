@@ -1,0 +1,185 @@
+@import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');
+@import "tailwindcss";
+
+/* دارک‌مود مبتنی بر کلاس */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Vazirmatn', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* پالت برند */
+  --color-brand-50: #eef4ff;
+  --color-brand-100: #d9e5ff;
+  --color-brand-200: #bcd2ff;
+  --color-brand-300: #8eb4ff;
+  --color-brand-400: #598cff;
+  --color-brand-500: #3364ff;
+  --color-brand-600: #1d41f5;
+  --color-brand-700: #172fe1;
+  --color-brand-800: #1929b6;
+  --color-brand-900: #1a2b8f;
+
+  --color-mint-400: #34d399;
+  --color-mint-500: #10b981;
+
+  /* سطوح */
+  --color-ink-950: #05070f;
+  --color-ink-900: #0a0e1a;
+  --color-ink-800: #111827;
+  --color-ink-700: #1c2333;
+
+  --radius-4xl: 1.75rem;
+  --radius-5xl: 2.25rem;
+
+  --animate-shimmer: shimmer 1.8s linear infinite;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-aurora: aurora 18s ease infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0) }
+  50%      { transform: translateY(-14px) }
+}
+@keyframes aurora {
+  0%, 100% { transform: translate3d(0,0,0) scale(1); }
+  33%      { transform: translate3d(6%, -8%, 0) scale(1.15); }
+  66%      { transform: translate3d(-7%, 5%, 0) scale(0.95); }
+}
+
+/* ——— انیمیشن‌های مشترک ——— */
+@keyframes fade-in {
+  from { opacity: 0 }
+  to   { opacity: 1 }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(22px) scale(.97) }
+  to   { opacity: 1; transform: none }
+}
+@keyframes slide-in-x {
+  from { opacity: 0; transform: translateX(-18px) }
+  to   { opacity: 1; transform: none }
+}
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(14px) }
+  to   { opacity: 1; transform: none }
+}
+@keyframes sheet-in {
+  from { opacity: 0; transform: translateY(48px) scale(.96) }
+  to   { opacity: 1; transform: none }
+}
+@keyframes grow-up {
+  from { transform: scaleY(0); opacity: .2 }
+  to   { transform: scaleY(1); opacity: 1 }
+}
+@keyframes draw-line {
+  from { stroke-dashoffset: 1 }
+  to   { stroke-dashoffset: 0 }
+}
+@keyframes donut-draw {
+  from { stroke-dashoffset: 1 }
+  to   { stroke-dashoffset: 0 }
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(.85); opacity: .7 }
+  70%  { transform: scale(1.6); opacity: 0 }
+  100% { transform: scale(1.6); opacity: 0 }
+}
+
+:root {
+  color-scheme: light;
+  --app-bg: #f4f6fc;
+  --surface: 255 255 255;
+  --surface-border: 15 23 42;
+  --text-strong: #0d1220;
+  --text-dim: #64748b;
+}
+
+.dark {
+  color-scheme: dark;
+  --app-bg: #05070f;
+  --surface: 22 28 44;
+  --surface-border: 148 163 184;
+  --text-strong: #f1f5f9;
+  --text-dim: #94a3b8;
+}
+
+* {
+  font-family: 'Vazirmatn', sans-serif;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  direction: rtl;
+  margin: 0;
+  background-color: var(--app-bg);
+  color: var(--text-strong);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .4s ease, color .4s ease;
+  overscroll-behavior-y: none;
+}
+
+/* ——— ابزارهای اختصاصی ——— */
+@utility glass {
+  background: rgb(var(--surface) / 0.72);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgb(var(--surface-border) / 0.10);
+  box-shadow: 0 18px 45px -22px rgb(15 23 42 / 0.32);
+}
+
+@utility glass-soft {
+  background: rgb(var(--surface) / 0.45);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid rgb(var(--surface-border) / 0.10);
+}
+
+@utility text-dim {
+  color: var(--text-dim);
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.01em;
+}
+
+@utility glow-brand { text-shadow: 0 0 22px rgb(51 100 255 / 0.45); }
+@utility glow-mint  { text-shadow: 0 0 22px rgb(16 185 129 / 0.45); }
+@utility glow-rose  { text-shadow: 0 0 22px rgb(251 113 133 / 0.45); }
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+/* اسکرول‌بار ظریف */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgb(100 116 139 / .3);
+  border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgb(100 116 139 / .55); background-clip: content-box; }
+
+/* حذف فلش‌های input number */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

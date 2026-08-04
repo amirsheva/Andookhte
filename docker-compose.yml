@@ -1,0 +1,55 @@
+services:
+  # ۱. دیتابیس PostgreSQL (با پشتیبانی کامل از کاراکترها و مرتب‌سازی فارسی)
+  postgres:
+    image: postgres:16
+    container_name: andookhte-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: andookhte
+      POSTGRES_USER: andookhte
+      POSTGRES_PASSWORD: YourStrongPassword123!
+      POSTGRES_INITDB_ARGS: "--locale=en_US.UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - andookhte-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U andookhte -d andookhte"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ۲. بک‌اند .NET API
+  api:
+    build:
+      context: .
+      dockerfile: src/Andookhte.Api/Dockerfile
+    container_name: andookhte-api
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=andookhte;Username=andookhte;Password=YourStrongPassword123!
+      - Jwt__SigningKey=THIS_IS_A_VERY_SECRET_KEY_FOR_JWT_SIGNING_123456789_AND_IT_IS_LONG_ENOUGH
+      - Cors__AllowedOrigins__0=http://95.38.188.15
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  # ۳. فرانت‌اند React + Nginx
+  web:
+    build:
+      context: ./andookhte-web
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://95.38.188.15:8080/api
+    container_name: andookhte-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+volumes:
+  andookhte-pgdata:

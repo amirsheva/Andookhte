@@ -1,0 +1,13 @@
+{
+  "//": "پیکربندی استقرار API روی لیارا. برای فرانت‌اند از liara.json داخل پوشهٔ andookhte-web استفاده کنید.",
+  "platform": "docker",
+  "port": 8080,
+  "healthCheck": {
+    "command": "curl -fsS http://localhost:8080/health || exit 1",
+    "interval": 30,
+    "timeout": 5,
+    "retries": 3,
+    "startPeriod": 20
+  },
+  "disks": []
+}

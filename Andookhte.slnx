@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Andookhte.Domain/Andookhte.Domain.csproj" />
+    <Project Path="src/Andookhte.Application/Andookhte.Application.csproj" />
+    <Project Path="src/Andookhte.Infrastructure/Andookhte.Infrastructure.csproj" />
+    <Project Path="src/Andookhte.Api/Andookhte.Api.csproj" />
+  </Folder>
+</Solution>

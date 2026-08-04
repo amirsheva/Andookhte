@@ -1,0 +1,16 @@
+# همان منطق سمت فرانت: خروجی npm run build روی سیستم خودتان ساخته می‌شود
+# و اینجا فقط سرو می‌شود. سرور به Node و node_modules نیازی ندارد.
+#
+# توجه: آدرس API هنگام build روی سیستم شما داخل باندل نوشته می‌شود،
+# پس متغیر VITE_API_BASE_URL را همان‌جا درست تنظیم کنید.
+
+FROM nginx:1.27-alpine
+
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY security-headers.conf /etc/nginx/security-headers.conf
+COPY dist/ /usr/share/nginx/html/
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
+  CMD wget -qO- http://localhost/ >/dev/null || exit 1

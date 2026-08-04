@@ -1,0 +1,31 @@
+# داکرفایل «از پیش ساخته‌شده» — روی سرور هیچ کامپایلی انجام نمی‌شود.
+#
+# خروجی dotnet publish را روی سیستم خودتان می‌سازید و در پوشهٔ deploy/api
+# می‌گذارید؛ اینجا فقط کپی و اجرا می‌شود. نتیجه: سرور به SDK، NuGet و
+# حافظهٔ زیاد نیازی ندارد و ساخت به‌جای چند دقیقه، چند ثانیه طول می‌کشد.
+#
+# context باید ریشهٔ پروژه باشد.
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+
+# ایمیج aspnet نه curl دارد نه wget؛ بدون این، بررسی سلامت همیشه ناموفق است
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN adduser --disabled-password --gecos "" --uid 10001 andookhte
+USER andookhte
+
+COPY --chown=andookhte:andookhte deploy/api/ .
+
+ENV ASPNETCORE_URLS=http://+:8080 \
+    ASPNETCORE_ENVIRONMENT=Production \
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl -fsS http://localhost:8080/health || exit 1
+
+ENTRYPOINT ["dotnet", "Andookhte.Api.dll"]
