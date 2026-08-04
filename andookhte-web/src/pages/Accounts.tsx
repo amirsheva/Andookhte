@@ -88,18 +88,19 @@ export function Accounts() {
           return (
             <div key={account.id} className="space-y-3">
               <BankCard account={account} index={index} />
-              <div className="flex items-center justify-between gap-2 px-2 text-[11px] text-dim">
+              <div className="flex items-center justify-between gap-2 px-2 text-xs text-dim">
                 <span className="flex items-center gap-1.5">
-                  <Landmark size={13} style={{ color: brand.accent }} />
+                  <Landmark size={14} style={{ color: brand.accent }} />
                   {ACCOUNT_TYPE_LABEL[account.type] ?? 'حساب'}
                 </span>
                 <span className="num flex items-center gap-1.5">
-                  <TrendingUp size={13} />
+                  <TrendingUp size={14} />
                   {formatNumber(account.transactionCount)} تراکنش
                 </span>
                 {canEdit && (
                   <ActionMenu
                     label={`عملیات ${account.title}`}
+                    align="end"
                     items={[
                       {
                         key: 'edit',

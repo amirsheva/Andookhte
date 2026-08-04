@@ -178,7 +178,7 @@ function CalendarCard({
   const todayJd = jalaliOfDate(new Date()).jd;
 
   return (
-    <GlassCard>
+    <GlassCard className="mx-auto max-w-xl">
       <div className="mb-5 flex items-center justify-between">
         {/* راست = ماه قبل، چپ = ماه بعد؛ هم‌جهت با فلش‌های رفت‌وبرگشت در بقیهٔ اپ */}
         <button
@@ -229,7 +229,10 @@ function CalendarCard({
               onClick={() => onSelectDay(key)}
               disabled={entries.length === 0}
               className={cx(
-                'num flex aspect-square flex-col items-center justify-center gap-1 rounded-xl text-xs transition disabled:cursor-default',
+                // ارتفاع ثابت عمداً به‌جای aspect-square — ستون‌های یک شبکهٔ عریض
+                // (دسکتاپ/تبلت) خیلی پهن می‌شوند و مربع‌کردن سلول باعث فضای خالی
+                // عمودی زیاد می‌شد.
+                'num flex h-11 flex-col items-center justify-center gap-1 rounded-xl text-xs transition disabled:cursor-default sm:h-12',
                 isToday && 'font-bold text-brand-500 ring-1 ring-inset ring-brand-400/50',
                 entries.length > 0 ? 'glass-soft hover:scale-105' : 'text-[var(--text-strong)]',
               )}

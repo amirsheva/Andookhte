@@ -120,19 +120,23 @@ export function BankCard({ account, compact = false, onClick, className, index =
             <div className="flex items-end justify-between gap-3">
               <div>
                 <p className="text-[10px] tracking-wide opacity-60">موجودی</p>
-                <AnimatedNumber
-                  value={account.currentBalance}
-                  suffix={currencyLabel(account.currencyCode)}
-                  className="text-xl font-extrabold sm:text-2xl"
-                />
+                {revealed ? (
+                  <AnimatedNumber
+                    value={account.currentBalance}
+                    suffix={currencyLabel(account.currencyCode)}
+                    className="text-xl font-extrabold sm:text-2xl"
+                  />
+                ) : (
+                  <p className="num text-xl font-extrabold sm:text-2xl">••••••••</p>
+                )}
               </div>
               <button
                 onClick={(event) => {
                   event.stopPropagation();
                   setRevealed((value) => !value);
                 }}
-                aria-label={revealed ? 'مخفی کردن شمارهٔ کارت' : 'نمایش شمارهٔ کارت'}
-                className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-white/20"
+                aria-label={revealed ? 'مخفی کردن موجودی و شمارهٔ کارت' : 'نمایش موجودی و شمارهٔ کارت'}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg transition hover:bg-white/20"
                 style={{ background: 'rgb(255 255 255 / .1)' }}
               >
                 {revealed ? <EyeOff size={14} /> : <Eye size={14} />}

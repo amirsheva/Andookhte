@@ -57,7 +57,9 @@ export function BottomNav({ onQuickAdd }: BottomNavProps) {
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="glass mx-3 mb-3 flex items-center rounded-3xl px-2 py-1 shadow-[0_-8px_40px_-12px_rgb(2_6_23/.35)]">
-        {left.map(renderItem)}
+        {/* هر دو طرف عرض برابر می‌گیرند (flex-1 روی خودِ ظرف، نه تک‌تک آیتم‌ها)
+            تا با تعداد نامساوی آیتم (۲ در برابر ۳)، دکمهٔ وسط از مرکز جابه‌جا نشود. */}
+        <div className="flex flex-1 items-center">{left.map(renderItem)}</div>
 
         <button
           onClick={() => {
@@ -74,7 +76,7 @@ export function BottomNav({ onQuickAdd }: BottomNavProps) {
           <Plus size={22} className="relative" />
         </button>
 
-        {right.map(renderItem)}
+        <div className="flex flex-1 items-center">{right.map(renderItem)}</div>
       </div>
     </nav>
   );
