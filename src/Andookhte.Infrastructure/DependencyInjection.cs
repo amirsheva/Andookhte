@@ -1,4 +1,5 @@
 using Andookhte.Application.Common.Interfaces;
+using Andookhte.Infrastructure.Debts;
 using Andookhte.Infrastructure.Persistence;
 using Andookhte.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
@@ -53,8 +54,17 @@ public static class DependencyInjection
         if (sms.IsConfigured)
             services.AddHttpClient<KavenegarOtpSender>();
 
+        // IEmailSender هم برای گیرندهٔ ایمیلی کد یک‌بارمصرف لازم است هم برای
+        // یادآوری سررسید بدهی؛ اینجا یک‌بار روشن/خاموش می‌شود، نه دوبار جدا.
         if (smtp.IsConfigured)
+        {
+            services.AddScoped<IEmailSender, SmtpEmailSender>();
             services.AddScoped<SmtpOtpSender>();
+        }
+        else
+        {
+            services.AddScoped<IEmailSender, LoggingEmailSender>();
+        }
 
         services.AddScoped<IOtpSender>(provider =>
         {
@@ -70,6 +80,7 @@ public static class DependencyInjection
         });
 
         services.AddHostedService<ExpiredRecordsCleanupService>();
+        services.AddHostedService<DebtReminderService>();
 
         return services;
     }

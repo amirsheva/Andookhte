@@ -154,6 +154,18 @@ public class DeleteTransactionCommandHandler : IRequestHandler<DeleteTransaction
             .FirstOrDefaultAsync(t => t.Id == request.Id, cancellationToken)
             ?? throw new NotFoundException("تراکنش یافت نشد.");
 
+        // حذف تراکنشی که پرداخت یک قسط بدهی/طلب است، آن قسط را با ارجاعی یتیم
+        // «پرداخت‌شده» نگه می‌دارد. به‌جای حذف آبشاری، تصمیم به کاربر واگذار می‌شود
+        // (همان الگوی محافظت حساب دارای تراکنش).
+        var linkedInstallment = await _context.DebtInstallments
+            .AnyAsync(i => i.PaidTransactionId == transaction.Id, cancellationToken);
+        if (linkedInstallment)
+        {
+            throw new ConflictException(
+                "این تراکنش پرداخت یک قسط بدهی/طلب است و قابل حذف نیست. " +
+                "ابتدا آن قسط را به‌جای «پرداخت‌شده» به «در انتظار» برگردانید.");
+        }
+
         var source = await TransactionRules.FindAccountAsync(
             _context, transaction.SourceAccountId, "مبدأ", cancellationToken);
         var destination = await TransactionRules.FindAccountAsync(

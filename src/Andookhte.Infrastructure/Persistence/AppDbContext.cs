@@ -1,5 +1,6 @@
 using Andookhte.Application.Common.Interfaces;
 using Andookhte.Domain.Common;
+using Andookhte.Domain.Entities.Debts;
 using Andookhte.Domain.Entities.Finance;
 using Andookhte.Domain.Entities.Identity;
 using Andookhte.Domain.Entities.Workspaces;
@@ -32,6 +33,9 @@ public class AppDbContext : DbContext, IAppDbContext
 
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
+
+    public DbSet<Debt> Debts => Set<Debt>();
+    public DbSet<DebtInstallment> DebtInstallments => Set<DebtInstallment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -169,6 +173,51 @@ public class AppDbContext : DbContext, IAppDbContext
                   .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasQueryFilter(t => !t.IsDeleted && t.WorkspaceId == CurrentWorkspaceId);
+        });
+
+        /* ————————— بدهی و طلب ————————— */
+
+        modelBuilder.Entity<Debt>(entity =>
+        {
+            entity.Property(d => d.Title).HasMaxLength(128).IsRequired();
+            entity.Property(d => d.CounterpartyName).HasMaxLength(128);
+            entity.Property(d => d.Note).HasMaxLength(512);
+
+            entity.HasIndex(d => d.WorkspaceId);
+
+            entity.HasOne<Workspace>()
+                  .WithMany()
+                  .HasForeignKey(d => d.WorkspaceId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasQueryFilter(d => !d.IsDeleted && d.WorkspaceId == CurrentWorkspaceId);
+        });
+
+        modelBuilder.Entity<DebtInstallment>(entity =>
+        {
+            entity.Property(i => i.Amount).HasPrecision(18, 2);
+
+            entity.HasIndex(i => new { i.DebtId, i.SequenceNumber });
+            entity.HasIndex(i => new { i.WorkspaceId, i.DueDateUtc });
+
+            entity.HasOne(i => i.Debt)
+                  .WithMany(d => d.Installments)
+                  .HasForeignKey(i => i.DebtId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Workspace>()
+                  .WithMany()
+                  .HasForeignKey(i => i.WorkspaceId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            // حذف تراکنشِ مرتبط نباید قسط را یتیم بگذارد؛ هندلر حذف تراکنش این حالت
+            // را صریحاً رد می‌کند (مثل محافظت حساب دارای تراکنش)، این Restrict خط دفاعی دوم است.
+            entity.HasOne(i => i.PaidTransaction)
+                  .WithMany()
+                  .HasForeignKey(i => i.PaidTransactionId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasQueryFilter(i => !i.IsDeleted && i.WorkspaceId == CurrentWorkspaceId);
         });
 
         ApplyUtcDateTimeConversion(modelBuilder);

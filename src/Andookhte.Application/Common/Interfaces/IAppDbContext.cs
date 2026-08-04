@@ -1,3 +1,4 @@
+using Andookhte.Domain.Entities.Debts;
 using Andookhte.Domain.Entities.Finance;
 using Andookhte.Domain.Entities.Identity;
 using Andookhte.Domain.Entities.Workspaces;
@@ -16,6 +17,9 @@ public interface IAppDbContext
 
     DbSet<Account> Accounts { get; }
     DbSet<Transaction> Transactions { get; }
+
+    DbSet<Debt> Debts { get; }
+    DbSet<DebtInstallment> DebtInstallments { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

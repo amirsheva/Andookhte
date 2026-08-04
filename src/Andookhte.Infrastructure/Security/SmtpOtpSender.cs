@@ -1,9 +1,6 @@
-using System.Net;
-using System.Net.Mail;
 using Andookhte.Application.Common.Interfaces;
 using Andookhte.Domain.Entities.Identity;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Andookhte.Infrastructure.Security;
 
@@ -12,15 +9,16 @@ namespace Andookhte.Infrastructure.Security;
 ///
 /// <see cref="ExposesCodeInResponse"/> همیشه false است — کد هرگز در پاسخ API برنمی‌گردد.
 /// گیرندهٔ غیرایمیلی پشتیبانی نمی‌شود؛ آن مسیر به <see cref="KavenegarOtpSender"/> می‌رود.
+/// اتصال خام SMTP در <see cref="SmtpEmailSender"/> است تا با یادآوری سررسید بدهی مشترک بماند.
 /// </summary>
 public class SmtpOtpSender : IOtpSender
 {
-    private readonly SmtpOptions _options;
+    private readonly IEmailSender _emailSender;
     private readonly ILogger<SmtpOtpSender> _logger;
 
-    public SmtpOtpSender(IOptions<SmtpOptions> options, ILogger<SmtpOtpSender> logger)
+    public SmtpOtpSender(IEmailSender emailSender, ILogger<SmtpOtpSender> logger)
     {
-        _options = options.Value;
+        _emailSender = emailSender;
         _logger = logger;
     }
 
@@ -36,32 +34,7 @@ public class SmtpOtpSender : IOtpSender
             return;
         }
 
-        var port = int.TryParse(_options.Port, out var parsed) ? parsed : 587;
-
-        using var client = new SmtpClient(_options.Host, port)
-        {
-            EnableSsl = true,
-            Credentials = new NetworkCredential(_options.Username, _options.Password),
-        };
-
-        using var message = new MailMessage
-        {
-            From = new MailAddress(_options.FromAddress, _options.FromName),
-            Subject = BuildSubject(purpose),
-            Body = BuildBody(code, purpose),
-        };
-        message.To.Add(receiver);
-
-        try
-        {
-            await client.SendMailAsync(message, cancellationToken);
-        }
-        catch (Exception exception) when (exception is SmtpException or InvalidOperationException)
-        {
-            // خطای شبکه یا پیکربندی نباید جریان بازیابی رمز را با استثنای مبهم بترکاند؛
-            // کاربر پیام «کد ارسال شد» را می‌بیند و در صورت نرسیدن، دوباره درخواست می‌دهد.
-            _logger.LogError(exception, "ارسال ایمیل به {Receiver} ناموفق بود.", receiver);
-        }
+        await _emailSender.SendAsync(receiver, BuildSubject(purpose), BuildBody(code, purpose), cancellationToken);
     }
 
     private static string BuildSubject(OtpPurpose purpose) => purpose switch
