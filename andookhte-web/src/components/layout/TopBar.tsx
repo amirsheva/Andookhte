@@ -22,11 +22,11 @@ export function TopBar({ onQuickAdd, onRefresh, refreshing = false }: TopBarProp
     <header className="sticky top-0 z-40 -mx-4 mb-6 px-4 pt-4 pb-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
       <div className="flex items-center gap-3">
         {/* برند در موبایل */}
-        <Link to="/" className="flex items-center gap-2.5 lg:hidden">
-          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-brand-400 via-brand-500 to-brand-700 text-white shadow-[0_10px_24px_-10px_rgb(51_100_255/.9)]">
+        <Link to="/" className="flex min-w-0 shrink-0 items-center gap-2.5 lg:hidden">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-brand-400 via-brand-500 to-brand-700 text-white shadow-[0_10px_24px_-10px_rgb(51_100_255/.9)]">
             <Sparkles size={17} />
           </span>
-          <span className="text-base font-extrabold">اندوخته</span>
+          <span className="truncate text-base font-extrabold">اندوخته</span>
         </Link>
 
         {/* عنوان صفحه در دسکتاپ */}
@@ -39,24 +39,32 @@ export function TopBar({ onQuickAdd, onRefresh, refreshing = false }: TopBarProp
           </p>
         </div>
 
-        <div className="mr-auto flex items-center gap-2">
-          {/* سوییچ فضای کاری در موبایل اینجاست؛ در دسکتاپ داخل سایدبار قرار دارد */}
-          <WorkspaceSwitcher className="w-40 lg:hidden" />
-
+        <div className="mr-auto flex shrink-0 items-center gap-2">
           <button
             onClick={onRefresh}
             aria-label="بارگذاری مجدد"
-            className="glass-soft grid h-11 w-11 place-items-center rounded-2xl text-dim transition hover:scale-105 hover:text-[var(--text-strong)] active:scale-95"
+            className="glass-soft grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-dim transition hover:scale-105 hover:text-[var(--text-strong)] active:scale-95"
           >
             <RefreshCw size={17} className={cx(refreshing && 'animate-spin')} />
           </button>
           <ThemeToggle />
-          <Button onClick={onQuickAdd} className="hidden sm:inline-flex">
-            <Plus size={17} />
-            تراکنش جدید
-          </Button>
+          {/* Button پایه‌اش inline-flex غیرشرطی دارد؛ hidden روی خودش با آن هم‌اولویت
+              می‌شود و نتیجه غیرقابل‌پیش‌بینی است. پس نمایش/عدم‌نمایش را یک والد بدون
+              کلاس display رقیب کنترل می‌کند. */}
+          <div className="hidden sm:block">
+            <Button onClick={onQuickAdd}>
+              <Plus size={17} />
+              تراکنش جدید
+            </Button>
+          </div>
           <UserMenu />
         </div>
+      </div>
+
+      {/* سوییچ فضای کاری: در موبایل ردیف دوم با عرض کامل تا فشرده نشود؛
+          در دسکتاپ داخل سایدبار است، اینجا تکرار نمی‌شود. */}
+      <div className="mt-3 lg:hidden">
+        <WorkspaceSwitcher className="w-full" />
       </div>
     </header>
   );
