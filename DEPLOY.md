@@ -67,6 +67,10 @@ Host=<host>;Port=<port>;Database=<db>;Username=<user>;Password=<pass>;SSL Mode=R
 | `Cors__AllowedOrigins__1` | دامنهٔ دوم، اگر دارید |
 | `Sms__ApiKey` | کلید پنل پیامک |
 | `Sms__Template` | نام الگوی تأییدشده |
+| `Smtp__Host` | مثلاً `smtp.gmail.com` — خالی یعنی ایمیل بازیابی فقط در لاگ |
+| `Smtp__Port` | `587` |
+| `Smtp__Username` / `Smtp__Password` | با Gmail: ایمیل کامل و یک App Password |
+| `Smtp__FromAddress` | همان ایمیل فرستنده |
 | `ASPNETCORE_ENVIRONMENT` | `Production` |
 
 کلید امضا را این‌طور بسازید:

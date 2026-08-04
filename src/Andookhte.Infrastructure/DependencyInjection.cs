@@ -36,18 +36,38 @@ public static class DependencyInjection
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<SmsOptions>(configuration.GetSection(SmsOptions.SectionName));
+        services.Configure<SmtpOptions>(configuration.GetSection(SmtpOptions.SectionName));
 
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
         services.AddSingleton<ITokenService, JwtTokenService>();
 
-        // تا وقتی کلید پنل پیامک تنظیم نشده باشد، کد فقط در لاگ نوشته می‌شود.
-        // این انتخاب در زمان راه‌اندازی انجام می‌شود تا در محیط توسعه چیزی نیاز به تغییر نداشته باشد.
+        // تا وقتی کلید پنل پیامک یا تنظیمات SMTP تنظیم نشده باشند، همان کانال فقط
+        // در لاگ می‌نویسد. این انتخاب در زمان راه‌اندازی انجام می‌شود تا در محیط
+        // توسعه چیزی نیاز به تغییر نداشته باشد. دو کانال جدا از هم روشن/خاموش می‌شوند
+        // چون ممکن است فقط یکی‌شان (مثلاً پیامک) پیکربندی شده باشد.
         var sms = configuration.GetSection(SmsOptions.SectionName).Get<SmsOptions>() ?? new SmsOptions();
+        var smtp = configuration.GetSection(SmtpOptions.SectionName).Get<SmtpOptions>() ?? new SmtpOptions();
+
+        services.AddScoped<LoggingOtpSender>();
 
         if (sms.IsConfigured)
-            services.AddHttpClient<IOtpSender, KavenegarOtpSender>();
-        else
-            services.AddScoped<IOtpSender, LoggingOtpSender>();
+            services.AddHttpClient<KavenegarOtpSender>();
+
+        if (smtp.IsConfigured)
+            services.AddScoped<SmtpOtpSender>();
+
+        services.AddScoped<IOtpSender>(provider =>
+        {
+            IOtpSender smsSender = sms.IsConfigured
+                ? provider.GetRequiredService<KavenegarOtpSender>()
+                : provider.GetRequiredService<LoggingOtpSender>();
+
+            IOtpSender emailSender = smtp.IsConfigured
+                ? provider.GetRequiredService<SmtpOtpSender>()
+                : provider.GetRequiredService<LoggingOtpSender>();
+
+            return new CompositeOtpSender(smsSender, emailSender);
+        });
 
         services.AddHostedService<ExpiredRecordsCleanupService>();
 
