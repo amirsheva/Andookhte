@@ -11,7 +11,7 @@ interface BottomNavProps {
 
 export function BottomNav({ onQuickAdd }: BottomNavProps) {
   const { path } = useRouter();
-  const items = NAV_ITEMS.slice(0, 4);
+  const items = NAV_ITEMS.slice(0, 5);
   const left = items.slice(0, 2);
   const right = items.slice(2);
 

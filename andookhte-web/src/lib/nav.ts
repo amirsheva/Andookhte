@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, CreditCard, ArrowLeftRight, PieChart, type LucideIcon,
+  LayoutDashboard, CreditCard, ArrowLeftRight, PieChart, CalendarClock, type LucideIcon,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -16,6 +16,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/accounts', label: 'حساب‌ها', icon: CreditCard, rgb: '168 85 247' },
   { to: '/transactions', label: 'تراکنش‌ها', icon: ArrowLeftRight, rgb: '16 185 129' },
   { to: '/analytics', label: 'تحلیل', icon: PieChart, rgb: '245 158 11' },
+  { to: '/debts', label: 'بدهی و طلب', icon: CalendarClock, rgb: '234 88 12' },
 ];
 
 export const findNavItem = (path: string): NavItem | undefined =>

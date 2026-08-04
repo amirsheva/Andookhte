@@ -2,7 +2,7 @@ import {
   ShoppingCart, Utensils, Car, Home, HeartPulse, GraduationCap, Plane, Gift,
   Wallet, Briefcase, TrendingUp, Zap, Wifi, Clapperboard, Dumbbell, Shirt,
   PiggyBank, Receipt, Landmark, ArrowLeftRight, Sparkles, Baby, PawPrint,
-  Fuel, Coffee, BookOpen, Hammer, type LucideIcon,
+  Fuel, Coffee, BookOpen, Hammer, CalendarClock, type LucideIcon,
 } from 'lucide-react';
 
 export interface CategoryMeta {
@@ -46,6 +46,7 @@ export const CATEGORIES: CategoryMeta[] = [
 
   // انتقال / سایر
   { key: 'transfer', label: 'انتقال بین حساب', icon: ArrowLeftRight, rgb: '148 163 184', kind: 'both' },
+  { key: 'debt', label: 'بدهی و طلب', icon: CalendarClock, rgb: '234 88 12', kind: 'both' },
   { key: 'other', label: 'سایر', icon: Wallet, rgb: '148 163 184', kind: 'both' },
 ];
 

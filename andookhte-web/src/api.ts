@@ -452,3 +452,82 @@ export const updateTransaction = async (id: string, data: UpdateTransactionInput
 export const deleteTransaction = async (id: string) => {
   await http.delete(`/Transactions/${id}`);
 };
+
+/* ————————————————— بدهی و طلب ————————————————— */
+
+export const DebtDirection = { Payable: 1, Receivable: 2 } as const;
+export const DEBT_DIRECTION_LABEL: Record<number, string> = {
+  1: 'بدهی من',
+  2: 'طلب من',
+};
+
+export const DebtRecurrenceType = { OneTime: 1, Installment: 2, Monthly: 3 } as const;
+export const DEBT_RECURRENCE_LABEL: Record<number, string> = {
+  1: 'یک‌باره',
+  2: 'اقساط ثابت',
+  3: 'ماهیانه بازگشتی',
+};
+
+export const InstallmentStatus = { Pending: 1, Paid: 2 } as const;
+
+export interface Installment {
+  id: string;
+  sequenceNumber: number;
+  dueDateUtc: string;
+  amount: number;
+  status: number;
+  paidAtUtc?: string | null;
+  paidTransactionId?: string | null;
+}
+
+export interface Debt {
+  id: string;
+  title: string;
+  direction: number;
+  recurrenceType: number;
+  counterpartyName?: string | null;
+  note?: string | null;
+  installments: Installment[];
+}
+
+export interface CreateDebtInput {
+  title: string;
+  direction: number;
+  recurrenceType: number;
+  firstDueDateUtc: string;
+  amount: number;
+  occurrenceCount?: number;
+  counterpartyName?: string;
+  note?: string;
+}
+
+export interface UpdateDebtInput {
+  title: string;
+  counterpartyName?: string;
+  note?: string;
+}
+
+export const debtsApi = {
+  list: async (): Promise<Debt[]> => (await http.get<Debt[]>('/Debts')).data,
+
+  create: async (input: CreateDebtInput): Promise<{ id: string }> =>
+    (await http.post('/Debts', input)).data,
+
+  update: async (id: string, input: UpdateDebtInput) => (await http.put(`/Debts/${id}`, input)).data,
+
+  remove: async (id: string) => {
+    await http.delete(`/Debts/${id}`);
+  },
+
+  extend: async (id: string, additionalCount: number) =>
+    (await http.post(`/Debts/${id}/extend`, { additionalCount })).data,
+
+  updateInstallment: async (installmentId: string, amount: number, dueDateUtc?: string) =>
+    (await http.put(`/Debts/installments/${installmentId}`, { amount, dueDateUtc })).data,
+
+  payInstallment: async (installmentId: string, accountId: string, paidAtUtc?: string) =>
+    (await http.post(`/Debts/installments/${installmentId}/pay`, { accountId, paidAtUtc })).data,
+
+  revertInstallment: async (installmentId: string) =>
+    (await http.post(`/Debts/installments/${installmentId}/revert`)).data,
+};

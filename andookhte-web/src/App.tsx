@@ -8,6 +8,7 @@ import { AuthProvider } from './store/AuthProvider';
 import { useAuth } from './store/authContext';
 import { FinanceProvider } from './store/FinanceProvider';
 import { useFinance } from './store/financeContext';
+import { DebtsProvider } from './store/DebtsProvider';
 import { Aurora } from './components/Aurora';
 import { Sidebar } from './components/layout/Sidebar';
 import { BottomNav } from './components/layout/BottomNav';
@@ -18,6 +19,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Accounts } from './pages/Accounts';
 import { Transactions } from './pages/Transactions';
 import { Analytics } from './pages/Analytics';
+import { Debts } from './pages/Debts';
 import { Profile } from './pages/Profile';
 import { AuthSplash, Login } from './pages/Login';
 import { GlassCard } from './components/ui/GlassCard';
@@ -44,6 +46,7 @@ function Routes() {
     : path.startsWith('/accounts') ? <Accounts />
     : path.startsWith('/transactions') ? <Transactions />
     : path.startsWith('/analytics') ? <Analytics />
+    : path.startsWith('/debts') ? <Debts />
     : path.startsWith('/profile') ? <Profile />
     : <NotFound />;
 
@@ -111,7 +114,9 @@ function Gate() {
 
   return (
     <FinanceProvider>
-      <Shell />
+      <DebtsProvider>
+        <Shell />
+      </DebtsProvider>
     </FinanceProvider>
   );
 }
