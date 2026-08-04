@@ -1,24 +1,31 @@
 import { useMemo, useState } from 'react';
-import { ArrowDownLeft, ArrowUpRight, ChevronLeft, PiggyBank, Plus, Wallet } from 'lucide-react';
+import {
+  ArrowDownLeft, ArrowUpRight, ChevronLeft, CreditCard, Landmark, Pencil, PiggyBank, Plus,
+  TrendingUp, Wallet,
+} from 'lucide-react';
 import { useFinance } from '../store/financeContext';
 import {
   byCategory, computeTotals, dailySeries, periodComparison, sumBalance, withinDays,
 } from '../lib/analytics';
+import { ACCOUNT_TYPE_LABEL, type Account } from '../api';
 import { currencyLabel, formatNumber } from '../lib/format';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Skeleton, SkeletonRow } from '../components/ui/Skeleton';
 import { StatCard } from '../components/StatCard';
 import { BankCard } from '../components/BankCard';
+import { AccountForm } from '../components/AccountForm';
 import { TransactionRow } from '../components/TransactionRow';
 import { TrendChart } from '../components/charts/TrendChart';
 import { DonutChart } from '../components/charts/DonutChart';
 import { Segmented } from '../components/ui/Segmented';
 import { Button } from '../components/ui/Button';
+import { Modal } from '../components/ui/Modal';
 import { Link } from '../router/Link';
 
 export function Dashboard() {
   const { accounts, transactions, loading } = useFinance();
   const [range, setRange] = useState(30);
+  const [detail, setDetail] = useState<{ account: Account; editing: boolean } | null>(null);
 
   const scoped = useMemo(() => withinDays(transactions, range), [transactions, range]);
   const totals = useMemo(() => computeTotals(accounts, scoped), [accounts, scoped]);
@@ -164,6 +171,7 @@ export function Dashboard() {
               account={account}
               index={index}
               compact
+              onClick={() => setDetail({ account, editing: false })}
               className="w-[78vw] shrink-0 snap-center sm:w-80 lg:w-auto"
             />
           ))}
@@ -205,6 +213,60 @@ export function Dashboard() {
           )}
         </GlassCard>
       </section>
+
+      <Modal
+        open={detail !== null}
+        onClose={() => setDetail(null)}
+        title={detail?.editing ? 'ویرایش حساب' : 'جزئیات حساب'}
+        description={detail?.account.title}
+      >
+        {detail && (
+          detail.editing ? (
+            <AccountForm account={detail.account} onDone={() => setDetail(null)} />
+          ) : (
+            <AccountDetail
+              account={detail.account}
+              onEdit={() => setDetail({ account: detail.account, editing: true })}
+            />
+          )
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+function AccountDetail({ account, onEdit }: { account: Account; onEdit: () => void }) {
+  return (
+    <div className="space-y-5">
+      <BankCard account={account} startRevealed />
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="glass-soft rounded-2xl px-4 py-3">
+          <p className="flex items-center gap-1.5 text-[11px] text-dim">
+            <Landmark size={13} /> نوع حساب
+          </p>
+          <p className="mt-1.5 text-sm font-bold">{ACCOUNT_TYPE_LABEL[account.type] ?? 'حساب'}</p>
+        </div>
+        <div className="glass-soft rounded-2xl px-4 py-3">
+          <p className="flex items-center gap-1.5 text-[11px] text-dim">
+            <TrendingUp size={13} /> تراکنش‌ها
+          </p>
+          <p className="num mt-1.5 text-sm font-bold">{formatNumber(account.transactionCount)}</p>
+        </div>
+        {account.iban && (
+          <div className="glass-soft col-span-2 rounded-2xl px-4 py-3">
+            <p className="flex items-center gap-1.5 text-[11px] text-dim">
+              <CreditCard size={13} /> شمارهٔ شبا
+            </p>
+            <p dir="ltr" className="num mt-1.5 text-right text-sm font-bold">{account.iban}</p>
+          </div>
+        )}
+      </div>
+
+      <Button onClick={onEdit} variant="soft" size="lg" className="w-full">
+        <Pencil size={16} />
+        ویرایش حساب
+      </Button>
     </div>
   );
 }

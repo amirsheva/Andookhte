@@ -13,9 +13,13 @@ interface BankCardProps {
   onClick?: () => void;
   className?: string;
   index?: number;
+  /** برای پیش‌نمایش زنده‌ی فرم ساخت — چیزی برای مخفی‌کردن نیست چون هنوز ذخیره نشده */
+  startRevealed?: boolean;
 }
 
-export function BankCard({ account, compact = false, onClick, className, index = 0 }: BankCardProps) {
+export function BankCard({
+  account, compact = false, onClick, className, index = 0, startRevealed = false,
+}: BankCardProps) {
   const brand = detectBank(account.cardNumber, account.bankName);
   const typeLabel = ACCOUNT_TYPE_LABEL[account.type] ?? 'حساب';
 
@@ -27,7 +31,7 @@ export function BankCard({ account, compact = false, onClick, className, index =
   const ref = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [shine, setShine] = useState({ x: 50, y: 50, on: false });
-  const [revealed, setRevealed] = useState(false);
+  const [revealed, setRevealed] = useState(startRevealed);
 
   const handleMove = (event: MouseEvent<HTMLDivElement>) => {
     const node = ref.current;
@@ -90,8 +94,8 @@ export function BankCard({ account, compact = false, onClick, className, index =
           {/* سطر بالا */}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold sm:text-base">{headline}</p>
-              <p className="mt-0.5 truncate text-[11px] opacity-65">{subtitle}</p>
+              <p className="truncate text-base font-bold sm:text-lg">{headline}</p>
+              <p className="mt-0.5 truncate text-xs opacity-65">{subtitle}</p>
             </div>
             <div
               className="grid h-9 w-9 shrink-0 place-items-center rounded-xl"
@@ -131,6 +135,7 @@ export function BankCard({ account, compact = false, onClick, className, index =
                 )}
               </div>
               <button
+                type="button"
                 onClick={(event) => {
                   event.stopPropagation();
                   setRevealed((value) => !value);
@@ -142,7 +147,7 @@ export function BankCard({ account, compact = false, onClick, className, index =
                 {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
-            <p className="num mt-3 text-sm tracking-[0.18em] opacity-85 sm:text-base">
+            <p dir="ltr" className="num mt-3 text-sm tracking-[0.18em] opacity-85 sm:text-base">
               {revealed ? formatCardNumber(account.cardNumber) : maskCardNumber(account.cardNumber)}
             </p>
           </div>

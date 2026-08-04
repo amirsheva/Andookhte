@@ -12,8 +12,6 @@ interface BottomNavProps {
 export function BottomNav({ onQuickAdd }: BottomNavProps) {
   const { path } = useRouter();
   const items = NAV_ITEMS.slice(0, 5);
-  const left = items.slice(0, 2);
-  const right = items.slice(2);
 
   const renderItem = (item: (typeof NAV_ITEMS)[number]) => {
     const active = matchPath(path, item.to, item.to === '/');
@@ -29,7 +27,7 @@ export function BottomNav({ onQuickAdd }: BottomNavProps) {
           active ? 'text-[var(--text-strong)]' : 'text-dim',
         )}
       >
-        <span className="relative grid h-8 w-12 place-items-center">
+        <span className="relative grid h-8 w-10 place-items-center">
           {active && (
             <span
               aria-hidden
@@ -38,7 +36,7 @@ export function BottomNav({ onQuickAdd }: BottomNavProps) {
             />
           )}
           <Icon
-            size={19}
+            size={18}
             className="relative transition-transform duration-300"
             style={{
               color: active ? `rgb(${item.rgb})` : undefined,
@@ -56,27 +54,24 @@ export function BottomNav({ onQuickAdd }: BottomNavProps) {
       className="fixed inset-x-0 bottom-0 z-50 lg:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="glass mx-3 mb-3 flex items-center rounded-3xl px-2 py-1 shadow-[0_-8px_40px_-12px_rgb(2_6_23/.35)]">
-        {/* هر دو طرف عرض برابر می‌گیرند (flex-1 روی خودِ ظرف، نه تک‌تک آیتم‌ها)
-            تا با تعداد نامساوی آیتم (۲ در برابر ۳)، دکمهٔ وسط از مرکز جابه‌جا نشود. */}
-        <div className="flex flex-1 items-center">{left.map(renderItem)}</div>
+      {/* دکمهٔ + جدا و شناور بالای نوار — به‌جای نشستن بین دو گروه نامساوی از آیتم‌ها */}
+      <button
+        onClick={() => {
+          haptic([12, 30, 12]);
+          onQuickAdd();
+        }}
+        aria-label="ثبت تراکنش جدید"
+        className="absolute -top-6 left-1/2 z-10 grid h-14 w-14 -translate-x-1/2 place-items-center rounded-2xl bg-gradient-to-br from-brand-400 via-brand-500 to-brand-700 text-white shadow-[0_14px_30px_-10px_rgb(51_100_255/.95)] transition-transform duration-300 active:scale-90"
+      >
+        <span
+          aria-hidden
+          className="absolute inset-0 animate-[pulse-ring_2.6s_ease-out_infinite] rounded-2xl bg-brand-500/40"
+        />
+        <Plus size={22} className="relative" />
+      </button>
 
-        <button
-          onClick={() => {
-            haptic([12, 30, 12]);
-            onQuickAdd();
-          }}
-          aria-label="ثبت تراکنش جدید"
-          className="relative mx-1 grid h-13 w-13 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-brand-400 via-brand-500 to-brand-700 text-white shadow-[0_14px_30px_-10px_rgb(51_100_255/.95)] transition-transform duration-300 active:scale-90"
-        >
-          <span
-            aria-hidden
-            className="absolute inset-0 animate-[pulse-ring_2.6s_ease-out_infinite] rounded-2xl bg-brand-500/40"
-          />
-          <Plus size={22} className="relative" />
-        </button>
-
-        <div className="flex flex-1 items-center">{right.map(renderItem)}</div>
+      <div className="glass mx-3 mb-3 flex items-center rounded-3xl px-1 pt-3 pb-1 shadow-[0_-8px_40px_-12px_rgb(2_6_23/.35)]">
+        {items.map(renderItem)}
       </div>
     </nav>
   );

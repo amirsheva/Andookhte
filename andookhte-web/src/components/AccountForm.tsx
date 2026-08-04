@@ -153,7 +153,7 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
     <form onSubmit={handleSubmit} className="space-y-5">
       {/* پیش‌نمایش زنده — همان کامپوننتی که در فهرست حساب‌ها استفاده می‌شود */}
       <div className="mx-auto max-w-xs">
-        <BankCard account={preview} compact />
+        <BankCard account={preview} compact startRevealed={!isEdit} />
       </div>
 
       <TextField
