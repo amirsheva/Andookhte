@@ -67,7 +67,9 @@ export function ActionMenu({ items, label = 'عملیات', className, align = '
         <div
           role="menu"
           className={cx(
-            'glass absolute top-full z-50 mt-1.5 w-48 animate-[rise_.25s_cubic-bezier(.16,1,.3,1)_both] overflow-hidden rounded-2xl p-1.5',
+            // z بالاتر از BottomNav (z-50) لازم است، وگرنه در صفحه‌های کوتاه که این
+            // منو نزدیک پایین باز می‌شود، پشت نوار ثابت پایین پنهان می‌شود.
+            'glass absolute top-full z-[60] mt-1.5 w-48 animate-[rise_.25s_cubic-bezier(.16,1,.3,1)_both] overflow-hidden rounded-2xl p-1.5',
             align === 'start' ? 'right-0' : 'left-0',
           )}
         >

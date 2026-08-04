@@ -54,14 +54,16 @@ export function BottomNav({ onQuickAdd }: BottomNavProps) {
       className="fixed inset-x-0 bottom-0 z-50 lg:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      {/* دکمهٔ + جدا و شناور بالای نوار — به‌جای نشستن بین دو گروه نامساوی از آیتم‌ها */}
+      {/* دکمهٔ + جدا و شناور بالای نوار. فاصله‌اش از نوار عمداً بیش از نصف
+          ارتفاع خودش است تا با آیکون/برچسب آیتم وسطی (که دقیقاً همین‌جا
+          مرکز می‌شود) تداخل نکند — قبلاً روی «تراکنش‌ها» می‌افتاد. */}
       <button
         onClick={() => {
           haptic([12, 30, 12]);
           onQuickAdd();
         }}
         aria-label="ثبت تراکنش جدید"
-        className="absolute -top-6 left-1/2 z-10 grid h-14 w-14 -translate-x-1/2 place-items-center rounded-2xl bg-gradient-to-br from-brand-400 via-brand-500 to-brand-700 text-white shadow-[0_14px_30px_-10px_rgb(51_100_255/.95)] transition-transform duration-300 active:scale-90"
+        className="absolute -top-8 left-1/2 z-10 grid h-14 w-14 -translate-x-1/2 place-items-center rounded-2xl bg-gradient-to-br from-brand-400 via-brand-500 to-brand-700 text-white shadow-[0_14px_30px_-10px_rgb(51_100_255/.95)] transition-transform duration-300 active:scale-90"
       >
         <span
           aria-hidden
@@ -70,7 +72,7 @@ export function BottomNav({ onQuickAdd }: BottomNavProps) {
         <Plus size={22} className="relative" />
       </button>
 
-      <div className="glass mx-3 mb-3 flex items-center rounded-3xl px-1 pt-3 pb-1 shadow-[0_-8px_40px_-12px_rgb(2_6_23/.35)]">
+      <div className="glass mx-3 mb-3 flex items-center rounded-3xl px-1 pt-8 pb-1 shadow-[0_-8px_40px_-12px_rgb(2_6_23/.35)]">
         {items.map(renderItem)}
       </div>
     </nav>
