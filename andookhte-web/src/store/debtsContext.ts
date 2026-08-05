@@ -10,6 +10,7 @@ export interface DebtsContextValue {
   updateDebt: (id: string, input: UpdateDebtInput) => Promise<void>;
   removeDebt: (id: string) => Promise<void>;
   extendDebt: (id: string, additionalCount: number) => Promise<void>;
+  rescheduleDebt: (id: string, newFirstDueDateUtc: string) => Promise<void>;
   updateInstallment: (installmentId: string, amount: number, dueDateUtc?: string) => Promise<void>;
   payInstallment: (installmentId: string, accountId: string, paidAtUtc?: string) => Promise<void>;
   revertInstallment: (installmentId: string) => Promise<void>;

@@ -64,6 +64,7 @@ export function Dashboard() {
           icon={Wallet}
           rgb="51 100 255"
           compact
+          hideable
           hint={`${formatNumber(accounts.length)} حساب فعال`}
         />
         <StatCard

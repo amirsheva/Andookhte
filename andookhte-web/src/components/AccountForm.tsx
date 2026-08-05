@@ -5,7 +5,9 @@ import { useAuth } from '../store/authContext';
 import { useFinance } from '../store/financeContext';
 import { useToast } from '../store/toastContext';
 import { BANK_OPTIONS, detectBank, isKnownBank, isValidCardNumber } from '../lib/banks';
-import { compactNumber, currencyLabel, formatCardNumber, formatCurrency, toEn } from '../lib/format';
+import {
+  compactNumber, currencyLabel, formatCardNumber, formatCurrency, rialEquivalent, toEn,
+} from '../lib/format';
 import { BankCard } from './BankCard';
 import { Button } from './ui/Button';
 import { SelectField, TextField } from './ui/Field';
@@ -16,9 +18,14 @@ const ACCOUNT_TYPES: number[] = [
   AccountType.Bank,
   AccountType.Cash,
   AccountType.SavingsFund,
-  AccountType.GoldAndCurrency,
+  AccountType.Gold,
+  AccountType.Currency,
   AccountType.Crypto,
 ];
+
+const GOLD_PURITIES = [24, 22, 21, 18];
+
+const GOLD_ITEM_TYPES = ['طلای خام / آب‌شده', 'سکه', 'انگشتر', 'گردنبند', 'گوشواره', 'دستبند', 'سایر'];
 
 interface AccountFormProps {
   /** اگر داده شود فرم در حالت ویرایش کار می‌کند. */
@@ -44,6 +51,16 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
   );
   const [iban, setIban] = useState(account?.iban ?? '');
   const [bankName, setBankName] = useState('');
+  const [note, setNote] = useState(account?.note ?? '');
+  const [goldWeight, setGoldWeight] = useState(
+    account?.goldWeightGrams != null ? String(account.goldWeightGrams) : '',
+  );
+  const [goldPurity, setGoldPurity] = useState<number>(account?.goldPurity ?? 18);
+  const [goldItemType, setGoldItemType] = useState(account?.goldItemType ?? GOLD_ITEM_TYPES[0]);
+  const [cryptoSymbol, setCryptoSymbol] = useState(account?.cryptoSymbol ?? '');
+  const [manualRate, setManualRate] = useState(
+    account?.manualRateIrr != null ? String(account.manualRateIrr) : '',
+  );
 
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -57,6 +74,13 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
   const cardDigits = toEn(cardNumber).replace(/\D/g, '').slice(0, 16);
   const numericBalance = Number(toEn(balance).replace(/[^\d]/g, '')) || 0;
   const isBankAccount = type === AccountType.Bank;
+  const isGold = type === AccountType.Gold;
+  const isCurrency = type === AccountType.Currency;
+  const isCrypto = type === AccountType.Crypto;
+  const showNote = type === AccountType.SavingsFund || isGold || isCurrency || isCrypto;
+  const showRate = isCurrency || isCrypto;
+  const numericRate = Number(toEn(manualRate).replace(/[^\d.]/g, '')) || 0;
+  const rateQuantity = isEdit ? account.currentBalance : numericBalance;
 
   /** بانک از روی شمارهٔ کارت تشخیص داده می‌شود؛ انتخاب دستی بر آن اولویت دارد. */
   const detected = useMemo(() => detectBank(cardDigits, undefined), [cardDigits]);
@@ -76,6 +100,12 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
     cardNumber: cardDigits || undefined,
     bankName: effectiveBankName || undefined,
     transactionCount: account?.transactionCount ?? 0,
+    note: note.trim() || undefined,
+    goldWeightGrams: isGold ? Number(toEn(goldWeight).replace(/[^\d.]/g, '')) || undefined : undefined,
+    goldPurity: isGold ? goldPurity : undefined,
+    goldItemType: isGold ? goldItemType : undefined,
+    cryptoSymbol: isCrypto ? cryptoSymbol.toUpperCase() || undefined : undefined,
+    manualRateIrr: showRate ? numericRate || undefined : undefined,
   };
 
   /**
@@ -133,6 +163,14 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
       cardNumber: cardDigits || undefined,
       iban: toEn(iban).replace(/\s/g, '').toUpperCase() || undefined,
       bankName: effectiveBankName || undefined,
+      note: note.trim() || undefined,
+      goldWeightGrams: isGold
+        ? Number(toEn(goldWeight).replace(/[^\d.]/g, '')) || undefined
+        : undefined,
+      goldPurity: isGold ? goldPurity : undefined,
+      goldItemType: isGold ? goldItemType : undefined,
+      cryptoSymbol: isCrypto ? cryptoSymbol.trim().toUpperCase() || undefined : undefined,
+      manualRateIrr: showRate ? numericRate || undefined : undefined,
     };
 
     setSubmitting(true);
@@ -174,8 +212,11 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
         <SelectField label="واحد پول" value={currency} onChange={(event) => setCurrency(event.target.value)}>
           <option value="IRR">ریال</option>
           <option value="IRT">تومان</option>
-          <option value="USD">دلار</option>
+          <option value="USD">دلار آمریکا</option>
           <option value="EUR">یورو</option>
+          <option value="GBP">پوند</option>
+          <option value="AED">درهم امارات</option>
+          <option value="TRY">لیر ترکیه</option>
         </SelectField>
       </div>
 
@@ -274,6 +315,84 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
             )}
           </div>
         </div>
+      )}
+
+      {/* فیلدهای اختصاصی طلا */}
+      {isGold && (
+        <div className="grid gap-4 border-t border-slate-500/10 pt-5 sm:grid-cols-3">
+          <TextField
+            label="وزن (گرم)"
+            inputMode="decimal"
+            placeholder="۰"
+            value={goldWeight}
+            onChange={(event) => setGoldWeight(event.target.value)}
+            className="sm:col-span-1"
+          />
+          <SelectField
+            label="عیار"
+            value={goldPurity}
+            onChange={(event) => setGoldPurity(Number(event.target.value))}
+          >
+            {GOLD_PURITIES.map((purity) => (
+              <option key={purity} value={purity}>عیار {purity}</option>
+            ))}
+          </SelectField>
+          <SelectField
+            label="نوع کالا"
+            value={goldItemType}
+            onChange={(event) => setGoldItemType(event.target.value)}
+          >
+            {GOLD_ITEM_TYPES.map((item) => (
+              <option key={item} value={item}>{item}</option>
+            ))}
+          </SelectField>
+        </div>
+      )}
+
+      {/* نماد رمزارز */}
+      {isCrypto && (
+        <div className="border-t border-slate-500/10 pt-5">
+          <TextField
+            label="نماد رمزارز"
+            dir="ltr"
+            placeholder="BTC، ETH، USDT، ..."
+            value={cryptoSymbol}
+            onChange={(event) => setCryptoSymbol(event.target.value.toUpperCase())}
+          />
+        </div>
+      )}
+
+      {/* نرخ روز — فعلاً دستی؛ برای محاسبهٔ معادل ریالی */}
+      {showRate && (
+        <div className="border-t border-slate-500/10 pt-5">
+          <TextField
+            label={`نرخ هر واحد ${isCurrency ? currencyLabel(currency) : cryptoSymbol || 'واحد'} (ریال)`}
+            inputMode="decimal"
+            placeholder="۰"
+            value={manualRate}
+            onChange={(event) => setManualRate(event.target.value)}
+            suffix="ریال"
+            hint={
+              rialEquivalent(rateQuantity, numericRate) !== undefined
+                ? `معادل تقریبی موجودی: ${formatCurrency(rialEquivalent(rateQuantity, numericRate)!, 'IRR')}`
+                : 'فعلاً دستی وارد کنید — بعداً امکان دریافت خودکار نرخ روز اضافه می‌شود'
+            }
+          />
+        </div>
+      )}
+
+      {/* یادداشت آزاد — برای انواعی که شمارهٔ کارت ندارند مفیدتر است */}
+      {showNote && (
+        <TextField
+          label="توضیحات (اختیاری)"
+          placeholder={
+            isCurrency || isCrypto
+              ? 'مثلاً نزد کدام صرافی یا کیف پول'
+              : 'مثلاً در صندوق فلان یا نزد چه کسی'
+          }
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+        />
       )}
 
       {/* اطلاعات بانکی فقط برای حساب بانکی معنا دارد */}

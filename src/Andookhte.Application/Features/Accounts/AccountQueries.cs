@@ -14,7 +14,13 @@ public record AccountDto(
     string? CardNumber,
     string? IBAN,
     string? BankName,
-    int TransactionCount
+    int TransactionCount,
+    string? Note,
+    decimal? GoldWeightGrams,
+    int? GoldPurity,
+    string? GoldItemType,
+    string? CryptoSymbol,
+    decimal? ManualRateIrr
 );
 
 /// <summary>
@@ -36,7 +42,8 @@ public class GetAccountsQueryHandler : IRequestHandler<GetAccountsQuery, List<Ac
                 a.Id, a.Title, a.Type, a.CurrentBalance, a.CurrencyCode,
                 a.CardNumber, a.IBAN, a.BankName,
                 _context.Transactions.Count(t =>
-                    t.SourceAccountId == a.Id || t.DestinationAccountId == a.Id)))
+                    t.SourceAccountId == a.Id || t.DestinationAccountId == a.Id),
+                a.Note, a.GoldWeightGrams, a.GoldPurity, a.GoldItemType, a.CryptoSymbol, a.ManualRateIrr))
             .ToListAsync(cancellationToken);
 
         // مرتب‌سازی در حافظه انجام می‌شود تا مستقل از پروایدر دیتابیس درست بماند.

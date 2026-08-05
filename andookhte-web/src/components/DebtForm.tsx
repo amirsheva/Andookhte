@@ -20,6 +20,7 @@ export function DebtForm({ onDone }: { onDone?: () => void }) {
   const [note, setNote] = useState('');
   const [amount, setAmount] = useState('');
   const [occurrenceCount, setOccurrenceCount] = useState('12');
+  const [alreadyPaidCount, setAlreadyPaidCount] = useState('0');
   const [jy, setJy] = useState(today.jy);
   const [jm, setJm] = useState(today.jm);
   const [jd, setJd] = useState(today.jd);
@@ -31,6 +32,10 @@ export function DebtForm({ onDone }: { onDone?: () => void }) {
   const isRecurring = recurrenceType !== DebtRecurrenceType.OneTime;
   const numericAmount = Number(toEn(amount).replace(/[^\d]/g, ''));
   const numericCount = Math.max(1, Number(toEn(occurrenceCount).replace(/[^\d]/g, '')) || 1);
+  const numericAlreadyPaid = Math.min(
+    numericCount,
+    Math.max(0, Number(toEn(alreadyPaidCount).replace(/[^\d]/g, '')) || 0),
+  );
 
   const dayOptions = useMemo(() => {
     // ۳۱ برای انتخاب سرراست کافی است؛ تاریخ نامعتبر (مثل ۳۱ آبان) هنگام ارسال تصحیح می‌شود
@@ -57,6 +62,7 @@ export function DebtForm({ onDone }: { onDone?: () => void }) {
         occurrenceCount: isRecurring ? numericCount : 1,
         counterpartyName: counterpartyName.trim() || undefined,
         note: note.trim() || undefined,
+        alreadyPaidCount: isRecurring ? numericAlreadyPaid : 0,
       });
 
       setSuccess(true);
@@ -152,6 +158,17 @@ export function DebtForm({ onDone }: { onDone?: () => void }) {
           />
         )}
       </div>
+
+      {isRecurring && (
+        <TextField
+          label="چند قسط از قبل پرداخت شده؟"
+          inputMode="numeric"
+          placeholder="۰"
+          value={alreadyPaidCount}
+          onChange={(event) => setAlreadyPaidCount(event.target.value)}
+          hint="اگر وسط وامی هستید که چند ماه ازش گذشته، اینجا بنویسید — آن قسط‌ها «پرداخت‌شده» ثبت می‌شوند بدون تراکنش مالی"
+        />
+      )}
 
       <TextField
         label="یادداشت (اختیاری)"

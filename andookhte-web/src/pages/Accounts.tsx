@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react';
-import { ArrowLeftRight, Landmark, Pencil, Plus, Sparkles, TrendingUp, Trash2 } from 'lucide-react';
+import {
+  ArrowLeftRight, Eye, EyeOff, Landmark, Pencil, Plus, Sparkles, TrendingUp, Trash2,
+} from 'lucide-react';
 import { ACCOUNT_TYPE_LABEL, WorkspaceRole, type Account } from '../api';
 import { ActionMenu } from '../components/ui/ActionMenu';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -26,6 +28,7 @@ export function Accounts() {
   // مودال به‌روزرسانی می‌کند، بدون بستن و بازکردن دوباره، عدد تازه نشان داده شود.
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Account | null>(null);
+  const [totalRevealed, setTotalRevealed] = useState(false);
   const editingAccount = accounts.find((a) => a.id === editingId) ?? null;
 
   const canEdit = hasRole(activeWorkspace?.role, WorkspaceRole.Accountant);
@@ -48,15 +51,31 @@ export function Accounts() {
       <GlassCard glow="51 100 255" className="animate-[rise_.6s_cubic-bezier(.16,1,.3,1)_both]">
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div>
-            <p className="text-xs text-dim">مجموع موجودی همهٔ حساب‌ها</p>
-            <AnimatedNumber
-              value={total}
-              suffix={currency}
-              className="mt-2 block text-3xl font-extrabold glow-brand sm:text-4xl"
-            />
-            <p className="num mt-2 text-[11px] text-dim">
-              {formatNumber(accounts.length)} حساب · معادل {compactNumber(total)}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-dim">مجموع موجودی همهٔ حساب‌ها</p>
+              <button
+                type="button"
+                onClick={() => setTotalRevealed((value) => !value)}
+                aria-label={totalRevealed ? 'مخفی کردن مجموع موجودی' : 'نمایش مجموع موجودی'}
+                className="grid h-6 w-6 place-items-center rounded-lg text-dim transition hover:bg-slate-500/10 hover:text-[var(--text-strong)]"
+              >
+                {totalRevealed ? <EyeOff size={13} /> : <Eye size={13} />}
+              </button>
+            </div>
+            {totalRevealed ? (
+              <>
+                <AnimatedNumber
+                  value={total}
+                  suffix={currency}
+                  className="mt-2 block text-3xl font-extrabold glow-brand sm:text-4xl"
+                />
+                <p className="num mt-2 text-[11px] text-dim">
+                  {formatNumber(accounts.length)} حساب · معادل {compactNumber(total)}
+                </p>
+              </>
+            ) : (
+              <p className="num mt-2 text-3xl font-extrabold sm:text-4xl">••••••••</p>
+            )}
           </div>
           <div className="flex flex-wrap gap-3">
             {canEdit && (

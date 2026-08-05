@@ -24,7 +24,9 @@ public record CreateDebtCommand(
     decimal Amount,
     int OccurrenceCount = 1,
     string? CounterpartyName = null,
-    string? Note = null
+    string? Note = null,
+    /// <summary>برای واردکردن وامی که از قبل شروع شده — این تعداد قسط اول «پرداخت‌شده» ثبت می‌شوند.</summary>
+    int AlreadyPaidCount = 0
 ) : IRequest<Guid>;
 
 public class CreateDebtCommandHandler : IRequestHandler<CreateDebtCommand, Guid>
@@ -67,16 +69,29 @@ public class CreateDebtCommandHandler : IRequestHandler<CreateDebtCommand, Guid>
         };
         _context.Debts.Add(debt);
 
+        var alreadyPaid = Math.Clamp(request.AlreadyPaidCount, 0, count);
+
         for (var i = 0; i < count; i++)
         {
-            _context.DebtInstallments.Add(new DebtInstallment
+            var dueDate = request.FirstDueDateUtc.AddMonths(i);
+            var installment = new DebtInstallment
             {
                 WorkspaceId = workspaceId,
                 DebtId = debt.Id,
                 SequenceNumber = i + 1,
-                DueDateUtc = request.FirstDueDateUtc.AddMonths(i),
+                DueDateUtc = dueDate,
                 Amount = request.Amount,
-            });
+            };
+
+            if (i < alreadyPaid)
+            {
+                // پرداخت واقعی بیرون از برنامه انجام شده و تراکنشی برایش نداریم؛
+                // تاریخ سررسید برنامه‌ریزی‌شده بهترین حدس برای تاریخ واقعی پرداخت است.
+                installment.Status = InstallmentStatus.Paid;
+                installment.PaidAtUtc = dueDate;
+            }
+
+            _context.DebtInstallments.Add(installment);
         }
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -115,6 +130,50 @@ public class UpdateDebtCommandHandler : IRequestHandler<UpdateDebtCommand, Unit>
         debt.Note = DebtRules.Blank(request.Note);
 
         await _context.SaveChangesAsync(cancellationToken);
+        return Unit.Value;
+    }
+}
+
+/* ————————————————— جابه‌جایی تاریخ (اصلاح تاریخ شروع) ————————————————— */
+
+/// <summary>
+/// همهٔ قسط‌ها (پرداخت‌شده و در انتظار) به یک اندازه جابه‌جا می‌شوند تا فاصلهٔ
+/// ماهانه بین‌شان حفظ شود — برای اصلاح یک اشتباه در تاریخ ثبت، نه بازنویسی تاریخچه.
+/// </summary>
+public record RescheduleDebtCommand(Guid DebtId, DateTime NewFirstDueDateUtc) : IRequest<Unit>;
+
+public class RescheduleDebtCommandHandler : IRequestHandler<RescheduleDebtCommand, Unit>
+{
+    private readonly IAppDbContext _context;
+    private readonly IWorkspaceContext _workspace;
+
+    public RescheduleDebtCommandHandler(IAppDbContext context, IWorkspaceContext workspace)
+    {
+        _context = context;
+        _workspace = workspace;
+    }
+
+    public async Task<Unit> Handle(RescheduleDebtCommand request, CancellationToken cancellationToken)
+    {
+        _workspace.RequireRole(WorkspaceRole.Accountant);
+
+        var debt = await _context.Debts
+            .Include(d => d.Installments)
+            .FirstOrDefaultAsync(d => d.Id == request.DebtId, cancellationToken)
+            ?? throw new NotFoundException("بدهی/طلب یافت نشد.");
+
+        var first = debt.Installments.OrderBy(i => i.SequenceNumber).FirstOrDefault()
+            ?? throw new ConflictException("این بدهی هیچ قسطی ندارد.");
+
+        var delta = request.NewFirstDueDateUtc - first.DueDateUtc;
+        if (delta != TimeSpan.Zero)
+        {
+            foreach (var installment in debt.Installments)
+                installment.DueDateUtc = installment.DueDateUtc.Add(delta);
+
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
         return Unit.Value;
     }
 }

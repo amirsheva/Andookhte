@@ -42,6 +42,23 @@ export const currencyLabel = (code?: string): string => {
   }
 };
 
+/** علامت ارز — فقط برای واحدهای رایج؛ بقیه به کد سه‌حرفی برمی‌گردند */
+export const currencySymbol = (code?: string): string => {
+  const clean = (code ?? '').trim().toUpperCase();
+  switch (clean) {
+    case 'USD': return '$';
+    case 'EUR': return '€';
+    case 'GBP': return '£';
+    case 'AED': return 'د.إ';
+    case 'TRY': return '₺';
+    default: return /^[A-Z]{3}$/.test(clean) ? clean : '';
+  }
+};
+
+/** معادل ریالی مقدار ارز/رمزارز بر اساس نرخ دستی؛ بدون نرخ معتبر چیزی محاسبه نمی‌شود */
+export const rialEquivalent = (quantity: number, manualRateIrr?: number): number | undefined =>
+  manualRateIrr != null && manualRateIrr > 0 ? quantity * manualRateIrr : undefined;
+
 /** خلاصه‌سازی اعداد بزرگ: ۱٫۲ میلیارد */
 export const compactNumber = (value: number): string => {
   const abs = Math.abs(value);

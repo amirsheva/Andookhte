@@ -16,7 +16,13 @@ public record CreateAccountCommand(
     string CurrencyCode = "IRR",
     string? CardNumber = null,
     string? IBAN = null,
-    string? BankName = null
+    string? BankName = null,
+    string? Note = null,
+    decimal? GoldWeightGrams = null,
+    int? GoldPurity = null,
+    string? GoldItemType = null,
+    string? CryptoSymbol = null,
+    decimal? ManualRateIrr = null
 ) : IRequest<Guid>;
 
 public class CreateAccountCommandHandler : IRequestHandler<CreateAccountCommand, Guid>
@@ -39,6 +45,8 @@ public class CreateAccountCommandHandler : IRequestHandler<CreateAccountCommand,
 
         if (string.IsNullOrWhiteSpace(request.Title))
             throw new ValidationException("عنوان حساب را وارد کنید.");
+        if (request.ManualRateIrr is <= 0)
+            throw new ValidationException("نرخ تبدیل باید عددی مثبت باشد.");
 
         var account = new Account
         {
@@ -51,7 +59,13 @@ public class CreateAccountCommandHandler : IRequestHandler<CreateAccountCommand,
             CurrencyCode = AccountRules.Currency(request.CurrencyCode),
             CardNumber = AccountRules.Blank(request.CardNumber),
             IBAN = AccountRules.Blank(request.IBAN),
-            BankName = AccountRules.Blank(request.BankName)
+            BankName = AccountRules.Blank(request.BankName),
+            Note = AccountRules.Blank(request.Note),
+            GoldWeightGrams = request.GoldWeightGrams,
+            GoldPurity = request.GoldPurity,
+            GoldItemType = AccountRules.Blank(request.GoldItemType),
+            CryptoSymbol = AccountRules.Blank(request.CryptoSymbol)?.ToUpperInvariant(),
+            ManualRateIrr = request.ManualRateIrr
         };
 
         _context.Accounts.Add(account);
@@ -74,7 +88,13 @@ public record UpdateAccountCommand(
     string CurrencyCode = "IRR",
     string? CardNumber = null,
     string? IBAN = null,
-    string? BankName = null
+    string? BankName = null,
+    string? Note = null,
+    decimal? GoldWeightGrams = null,
+    int? GoldPurity = null,
+    string? GoldItemType = null,
+    string? CryptoSymbol = null,
+    decimal? ManualRateIrr = null
 ) : IRequest<Unit>;
 
 public class UpdateAccountCommandHandler : IRequestHandler<UpdateAccountCommand, Unit>
@@ -94,6 +114,8 @@ public class UpdateAccountCommandHandler : IRequestHandler<UpdateAccountCommand,
 
         if (string.IsNullOrWhiteSpace(request.Title))
             throw new ValidationException("عنوان حساب را وارد کنید.");
+        if (request.ManualRateIrr is <= 0)
+            throw new ValidationException("نرخ تبدیل باید عددی مثبت باشد.");
 
         var account = await _context.Accounts
             .FirstOrDefaultAsync(a => a.Id == request.Id, cancellationToken)
@@ -105,6 +127,12 @@ public class UpdateAccountCommandHandler : IRequestHandler<UpdateAccountCommand,
         account.CardNumber = AccountRules.Blank(request.CardNumber);
         account.IBAN = AccountRules.Blank(request.IBAN);
         account.BankName = AccountRules.Blank(request.BankName);
+        account.Note = AccountRules.Blank(request.Note);
+        account.GoldWeightGrams = request.GoldWeightGrams;
+        account.GoldPurity = request.GoldPurity;
+        account.GoldItemType = AccountRules.Blank(request.GoldItemType);
+        account.CryptoSymbol = AccountRules.Blank(request.CryptoSymbol)?.ToUpperInvariant();
+        account.ManualRateIrr = request.ManualRateIrr;
 
         await _context.SaveChangesAsync(cancellationToken);
 

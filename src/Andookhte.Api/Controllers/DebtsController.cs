@@ -25,7 +25,8 @@ public class DebtsController : ControllerBase
         var id = await _mediator.Send(
             new CreateDebtCommand(
                 body.Title, body.Direction, body.RecurrenceType, body.FirstDueDateUtc,
-                body.Amount, body.OccurrenceCount, body.CounterpartyName, body.Note),
+                body.Amount, body.OccurrenceCount, body.CounterpartyName, body.Note,
+                body.AlreadyPaidCount),
             ct);
 
         return Ok(new { id, message = "بدهی/طلب با موفقیت ثبت شد." });
@@ -35,6 +36,13 @@ public class DebtsController : ControllerBase
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateDebtBody body, CancellationToken ct)
     {
         await _mediator.Send(new UpdateDebtCommand(id, body.Title, body.CounterpartyName, body.Note), ct);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/reschedule")]
+    public async Task<IActionResult> Reschedule(Guid id, [FromBody] RescheduleDebtBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new RescheduleDebtCommand(id, body.NewFirstDueDateUtc), ct);
         return NoContent();
     }
 
@@ -87,10 +95,13 @@ public record CreateDebtBody(
     decimal Amount,
     int OccurrenceCount = 1,
     string? CounterpartyName = null,
-    string? Note = null
+    string? Note = null,
+    int AlreadyPaidCount = 0
 );
 
 public record UpdateDebtBody(string Title, string? CounterpartyName, string? Note);
+
+public record RescheduleDebtBody(DateTime NewFirstDueDateUtc);
 
 public record ExtendDebtBody(int AdditionalCount);
 

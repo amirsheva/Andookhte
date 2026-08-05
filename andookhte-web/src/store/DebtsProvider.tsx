@@ -72,6 +72,14 @@ export function DebtsProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
+  const rescheduleDebt = useCallback(
+    async (id: string, newFirstDueDateUtc: string) => {
+      await debtsApi.reschedule(id, newFirstDueDateUtc);
+      await refresh();
+    },
+    [refresh],
+  );
+
   const updateInstallment = useCallback(
     async (installmentId: string, amount: number, dueDateUtc?: string) => {
       await debtsApi.updateInstallment(installmentId, amount, dueDateUtc);
@@ -99,11 +107,11 @@ export function DebtsProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       debts, loading, error, refresh, addDebt, updateDebt, removeDebt,
-      extendDebt, updateInstallment, payInstallment, revertInstallment,
+      extendDebt, rescheduleDebt, updateInstallment, payInstallment, revertInstallment,
     }),
     [
       debts, loading, error, refresh, addDebt, updateDebt, removeDebt,
-      extendDebt, updateInstallment, payInstallment, revertInstallment,
+      extendDebt, rescheduleDebt, updateInstallment, payInstallment, revertInstallment,
     ],
   );
 

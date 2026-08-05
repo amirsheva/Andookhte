@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   Plus, ChevronRight, ChevronLeft, Landmark, Check, Trash2, Pencil,
-  CalendarPlus, ArrowDownCircle, ArrowUpCircle, Undo2,
+  CalendarPlus, CalendarClock, ArrowDownCircle, ArrowUpCircle, Undo2,
 } from 'lucide-react';
 import {
   DebtDirection, DebtRecurrenceType, DEBT_DIRECTION_LABEL, DEBT_RECURRENCE_LABEL,
@@ -13,7 +13,7 @@ import { useFinance } from '../store/financeContext';
 import { useToast } from '../store/toastContext';
 import {
   addMonths, JALALI_WEEKDAY_SHORT, jalaliKeyOf, jalaliKeyOfUtcDate, jalaliOfDate,
-  monthGridDays, sameMonth, todayJalali, type JalaliYm,
+  jalaliToIsoDate, monthGridDays, sameMonth, todayJalali, type JalaliYm,
 } from '../lib/jalali';
 import { currencyLabel, cx, formatDate, formatNumber, persianMonthName, toEn, toFa } from '../lib/format';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -36,6 +36,7 @@ export function Debts() {
   const [month, setMonth] = useState<JalaliYm>(todayJalali());
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<DebtRecord | null>(null);
+  const [rescheduling, setRescheduling] = useState<DebtRecord | null>(null);
 
   const currency = currencyLabel(accounts[0]?.currencyCode ?? activeWorkspace?.currencyCode);
 
@@ -133,6 +134,7 @@ export function Debts() {
               currency={currency}
               onDelete={() => setDeleting(debt)}
               onExtend={() => void extendDebt(debt.id, 6)}
+              onReschedule={() => setRescheduling(debt)}
             />
           ))
         )}
@@ -159,6 +161,17 @@ export function Debts() {
         confirmLabel="حذف کن"
         description={<>«{deleting?.title}» حذف می‌شود. این کار قابل بازگشت نیست.</>}
       />
+
+      <Modal
+        open={rescheduling !== null}
+        onClose={() => setRescheduling(null)}
+        title="اصلاح تاریخ شروع"
+        description={rescheduling?.title}
+      >
+        {rescheduling && (
+          <RescheduleForm debt={rescheduling} onDone={() => setRescheduling(null)} />
+        )}
+      </Modal>
     </div>
   );
 }
@@ -277,12 +290,13 @@ function DayDetail({ entries, currency, onDone }: { entries: Entry[]; currency: 
 /* ————————————————— کارت یک بدهی/طلب ————————————————— */
 
 function DebtCard({
-  debt, currency, onDelete, onExtend,
+  debt, currency, onDelete, onExtend, onReschedule,
 }: {
   debt: DebtRecord;
   currency: string;
   onDelete: () => void;
   onExtend: () => void;
+  onReschedule: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -298,6 +312,12 @@ function DebtCard({
   if (debt.recurrenceType === DebtRecurrenceType.Monthly) {
     items.push({ key: 'extend', label: 'افزودن ۶ ماه دیگر', icon: <CalendarPlus size={14} />, onSelect: onExtend });
   }
+  items.push({
+    key: 'reschedule',
+    label: 'اصلاح تاریخ شروع',
+    icon: <CalendarClock size={14} />,
+    onSelect: onReschedule,
+  });
   items.push({
     key: 'delete',
     label: 'حذف',
@@ -348,6 +368,68 @@ function DebtCard({
         </div>
       )}
     </GlassCard>
+  );
+}
+
+/* ————————————————— فرم اصلاح تاریخ شروع ————————————————— */
+
+function RescheduleForm({ debt, onDone }: { debt: DebtRecord; onDone: () => void }) {
+  const { rescheduleDebt } = useDebts();
+  const initial = useMemo(() => jalaliOfDate(new Date(debt.installments[0].dueDateUtc)), [debt]);
+
+  const [jy, setJy] = useState(initial.jy);
+  const [jm, setJm] = useState(initial.jm);
+  const [jd, setJd] = useState(initial.jd);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const label = debt.installments.length > 1 ? 'تاریخ اولین قسط' : 'تاریخ سررسید';
+
+  const handleSubmit = async () => {
+    setError(null);
+    setSubmitting(true);
+    try {
+      await rescheduleDebt(debt.id, jalaliToIsoDate(jy, jm, jd));
+      onDone();
+    } catch (err) {
+      setError(readErrorMessage(err, 'اصلاح تاریخ با خطا مواجه شد.'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <p className="text-xs leading-relaxed text-dim">
+        با تغییر این تاریخ، همهٔ اقساط (پرداخت‌شده و در انتظار) به همان اندازه جابه‌جا می‌شوند.
+      </p>
+      <div>
+        <p className="mb-2 text-xs font-medium text-dim">{label}</p>
+        <div className="grid grid-cols-3 gap-2.5">
+          <SelectField value={jd} onChange={(event) => setJd(Number(event.target.value))}>
+            {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
+              <option key={day} value={day}>{toFa(day)}</option>
+            ))}
+          </SelectField>
+          <SelectField value={jm} onChange={(event) => setJm(Number(event.target.value))}>
+            {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
+              <option key={month} value={month}>{persianMonthName(month)}</option>
+            ))}
+          </SelectField>
+          <SelectField value={jy} onChange={(event) => setJy(Number(event.target.value))}>
+            {Array.from({ length: 8 }, (_, index) => initial.jy - 4 + index).map((year) => (
+              <option key={year} value={year}>{toFa(year)}</option>
+            ))}
+          </SelectField>
+        </div>
+      </div>
+
+      {error && <p className="rounded-2xl bg-rose-500/10 px-4 py-2.5 text-xs text-rose-500">{error}</p>}
+
+      <Button loading={submitting} onClick={() => void handleSubmit()} size="lg" className="w-full">
+        ثبت تاریخ جدید
+      </Button>
+    </div>
   );
 }
 

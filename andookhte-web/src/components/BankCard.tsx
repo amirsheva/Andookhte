@@ -1,9 +1,12 @@
 import { useRef, useState, type MouseEvent } from 'react';
 import { Eye, EyeOff, Wallet } from 'lucide-react';
 import type { Account } from '../api';
-import { ACCOUNT_TYPE_LABEL } from '../api';
+import { ACCOUNT_TYPE_LABEL, AccountType } from '../api';
 import { detectBank, isKnownBank } from '../lib/banks';
-import { currencyLabel, cx, formatCardNumber, maskCardNumber } from '../lib/format';
+import {
+  currencyLabel, currencySymbol, cx, formatCardNumber, formatCurrency, formatNumber,
+  maskCardNumber, rialEquivalent, toFa,
+} from '../lib/format';
 import { AnimatedNumber } from './ui/AnimatedNumber';
 
 interface BankCardProps {
@@ -27,6 +30,17 @@ export function BankCard({
   const known = isKnownBank(brand);
   const headline = known ? brand.name : account.title;
   const subtitle = known ? `${account.title} · ${typeLabel}` : typeLabel;
+
+  const isBank = account.type === AccountType.Bank;
+  const isGold = account.type === AccountType.Gold;
+  const isCrypto = account.type === AccountType.Crypto;
+  const isCurrency = account.type === AccountType.Currency;
+  const balanceSuffix = isCrypto
+    ? account.cryptoSymbol || 'واحد'
+    : isCurrency
+      ? `${currencyLabel(account.currencyCode)} ${currencySymbol(account.currencyCode)}`.trim()
+      : currencyLabel(account.currencyCode);
+  const rial = (isCrypto || isCurrency) ? rialEquivalent(account.currentBalance, account.manualRateIrr) : undefined;
 
   const ref = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
@@ -119,15 +133,17 @@ export function BankCard({
             </div>
           )}
 
-          {/* موجودی و شماره کارت */}
+          {/* موجودی و ردیف پایینی مخصوص هر نوع حساب */}
           <div>
             <div className="flex items-end justify-between gap-3">
               <div>
-                <p className="text-[10px] tracking-wide opacity-60">موجودی</p>
+                <p className="text-[10px] tracking-wide opacity-60">
+                  {isCrypto || isCurrency ? 'مقدار' : 'موجودی'}
+                </p>
                 {revealed ? (
                   <AnimatedNumber
                     value={account.currentBalance}
-                    suffix={currencyLabel(account.currencyCode)}
+                    suffix={balanceSuffix}
                     className="text-xl font-extrabold sm:text-2xl"
                   />
                 ) : (
@@ -140,16 +156,37 @@ export function BankCard({
                   event.stopPropagation();
                   setRevealed((value) => !value);
                 }}
-                aria-label={revealed ? 'مخفی کردن موجودی و شمارهٔ کارت' : 'نمایش موجودی و شمارهٔ کارت'}
+                aria-label={revealed ? 'مخفی کردن موجودی' : 'نمایش موجودی'}
                 className="grid h-8 w-8 shrink-0 place-items-center rounded-lg transition hover:bg-white/20"
                 style={{ background: 'rgb(255 255 255 / .1)' }}
               >
                 {revealed ? <EyeOff size={14} /> : <Eye size={14} />}
               </button>
             </div>
-            <p dir="ltr" className="num mt-3 text-sm tracking-[0.18em] opacity-85 sm:text-base">
-              {revealed ? formatCardNumber(account.cardNumber) : maskCardNumber(account.cardNumber)}
-            </p>
+
+            {revealed && rial !== undefined && (
+              <p className="num mt-1 text-[11px] opacity-70">≈ {formatCurrency(rial, 'IRR')}</p>
+            )}
+
+            {isBank && (
+              <p dir="ltr" className="num mt-3 text-sm tracking-[0.18em] opacity-85 sm:text-base">
+                {revealed ? formatCardNumber(account.cardNumber) : maskCardNumber(account.cardNumber)}
+              </p>
+            )}
+
+            {isGold && (account.goldWeightGrams || account.goldPurity || account.goldItemType) && (
+              <p className="num mt-3 truncate text-xs opacity-80 sm:text-sm">
+                {[
+                  account.goldWeightGrams != null && `${formatNumber(account.goldWeightGrams, 2)} گرم`,
+                  account.goldPurity != null && `عیار ${toFa(account.goldPurity)}`,
+                  account.goldItemType,
+                ].filter(Boolean).join(' · ')}
+              </p>
+            )}
+
+            {!isBank && !isGold && account.note && (
+              <p className="mt-3 truncate text-xs opacity-80 sm:text-sm">{account.note}</p>
+            )}
           </div>
         </div>
       </div>

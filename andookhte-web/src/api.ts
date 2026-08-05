@@ -26,17 +26,19 @@ export const TransactionType = {
 export const AccountType = {
   Bank: 1,
   Cash: 2,
-  GoldAndCurrency: 3,
+  Gold: 3,
   Crypto: 4,
   SavingsFund: 5,
+  Currency: 6,
 } as const;
 
 export const ACCOUNT_TYPE_LABEL: Record<number, string> = {
   1: 'حساب بانکی',
   2: 'نقدی',
-  3: 'طلا و ارز',
+  3: 'طلا',
   4: 'رمزارز',
   5: 'صندوق پس‌انداز',
+  6: 'ارز',
 };
 
 export const WorkspaceRole = {
@@ -113,6 +115,12 @@ export interface Account {
   iban?: string;
   /** شمار تراکنش‌های وابسته — حسابی که تراکنش دارد قابل حذف نیست. */
   transactionCount: number;
+  note?: string;
+  goldWeightGrams?: number;
+  goldPurity?: number;
+  goldItemType?: string;
+  cryptoSymbol?: string;
+  manualRateIrr?: number;
 }
 
 export interface Transaction {
@@ -144,6 +152,12 @@ export interface CreateAccountInput {
   cardNumber?: string;
   iban?: string;
   bankName?: string;
+  note?: string;
+  goldWeightGrams?: number;
+  goldPurity?: number;
+  goldItemType?: string;
+  cryptoSymbol?: string;
+  manualRateIrr?: number;
 }
 
 /**
@@ -157,6 +171,12 @@ export interface UpdateAccountInput {
   cardNumber?: string;
   iban?: string;
   bankName?: string;
+  note?: string;
+  goldWeightGrams?: number;
+  goldPurity?: number;
+  goldItemType?: string;
+  cryptoSymbol?: string;
+  manualRateIrr?: number;
 }
 
 export interface UpdateTransactionInput {
@@ -289,6 +309,12 @@ const normalizeAccount = (raw: Record<string, unknown>): Account => ({
   bankName: firstClean(raw.bankName),
   iban: firstClean(raw.iban, raw.IBAN),
   transactionCount: Number(raw.transactionCount ?? 0),
+  note: firstClean(raw.note),
+  goldWeightGrams: raw.goldWeightGrams != null ? Number(raw.goldWeightGrams) : undefined,
+  goldPurity: raw.goldPurity != null ? Number(raw.goldPurity) : undefined,
+  goldItemType: firstClean(raw.goldItemType),
+  cryptoSymbol: firstClean(raw.cryptoSymbol),
+  manualRateIrr: raw.manualRateIrr != null ? Number(raw.manualRateIrr) : undefined,
 });
 
 const normalizeTransaction = (raw: Record<string, unknown>): Transaction => ({
@@ -499,6 +525,8 @@ export interface CreateDebtInput {
   occurrenceCount?: number;
   counterpartyName?: string;
   note?: string;
+  /** برای وامی که از قبل شروع شده — این تعداد قسط اول «پرداخت‌شده» ثبت می‌شود. */
+  alreadyPaidCount?: number;
 }
 
 export interface UpdateDebtInput {
@@ -521,6 +549,9 @@ export const debtsApi = {
 
   extend: async (id: string, additionalCount: number) =>
     (await http.post(`/Debts/${id}/extend`, { additionalCount })).data,
+
+  reschedule: async (id: string, newFirstDueDateUtc: string) =>
+    (await http.post(`/Debts/${id}/reschedule`, { newFirstDueDateUtc })).data,
 
   updateInstallment: async (installmentId: string, amount: number, dueDateUtc?: string) =>
     (await http.put(`/Debts/installments/${installmentId}`, { amount, dueDateUtc })).data,

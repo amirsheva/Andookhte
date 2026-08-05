@@ -1,6 +1,6 @@
-import { TransactionType, type Account, type Transaction } from '../api';
+import { AccountType, TransactionType, type Account, type Transaction } from '../api';
 import { getCategory } from './categories';
-import { persianMonthName } from './format';
+import { persianMonthName, rialEquivalent } from './format';
 
 export interface Totals {
   balance: number;
@@ -16,8 +16,17 @@ export const isIncome = (tx: Transaction) => tx.type === TransactionType.Income;
 export const isExpense = (tx: Transaction) => tx.type === TransactionType.Expense;
 export const isTransfer = (tx: Transaction) => tx.type === TransactionType.Transfer;
 
+/**
+ * موجودی حساب‌های ارز/رمزارز به واحد خودشان است (مثلاً دلار)، نه ریال —
+ * جمع مستقیم آن با بقیهٔ حساب‌ها بی‌معناست. با نرخ دستی به ریال تبدیل می‌شود؛
+ * حسابی که هنوز نرخ ندارد، تا وارد شدن نرخ در جمع کل شمرده نمی‌شود.
+ */
 export const sumBalance = (accounts: Account[]): number =>
-  accounts.reduce((acc, cur) => acc + (cur.currentBalance || 0), 0);
+  accounts.reduce((acc, cur) => {
+    const isForeignUnit = cur.type === AccountType.Currency || cur.type === AccountType.Crypto;
+    if (!isForeignUnit) return acc + (cur.currentBalance || 0);
+    return acc + (rialEquivalent(cur.currentBalance || 0, cur.manualRateIrr) ?? 0);
+  }, 0);
 
 /** تراکنش‌های n روز اخیر */
 export const withinDays = (transactions: Transaction[], days: number): Transaction[] => {

@@ -34,7 +34,9 @@ public class AccountsController : ControllerBase
     {
         await _mediator.Send(
             new UpdateAccountCommand(id, body.Title, body.Type, body.CurrencyCode,
-                body.CardNumber, body.IBAN, body.BankName), ct);
+                body.CardNumber, body.IBAN, body.BankName, body.Note,
+                body.GoldWeightGrams, body.GoldPurity, body.GoldItemType, body.CryptoSymbol,
+                body.ManualRateIrr), ct);
 
         return NoContent();
     }
@@ -57,5 +59,11 @@ public record UpdateAccountBody(
     string CurrencyCode = "IRR",
     string? CardNumber = null,
     string? IBAN = null,
-    string? BankName = null
+    string? BankName = null,
+    string? Note = null,
+    decimal? GoldWeightGrams = null,
+    int? GoldPurity = null,
+    string? GoldItemType = null,
+    string? CryptoSymbol = null,
+    decimal? ManualRateIrr = null
 );

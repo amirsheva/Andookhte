@@ -136,6 +136,11 @@ public class AppDbContext : DbContext, IAppDbContext
             entity.Property(a => a.BankName).HasMaxLength(128);
             entity.Property(a => a.InitialBalance).HasPrecision(18, 2);
             entity.Property(a => a.CurrentBalance).HasPrecision(18, 2);
+            entity.Property(a => a.Note).HasMaxLength(512);
+            entity.Property(a => a.GoldWeightGrams).HasPrecision(10, 3);
+            entity.Property(a => a.GoldItemType).HasMaxLength(64);
+            entity.Property(a => a.CryptoSymbol).HasMaxLength(16);
+            entity.Property(a => a.ManualRateIrr).HasPrecision(18, 4);
 
             entity.HasIndex(a => a.WorkspaceId);
 
