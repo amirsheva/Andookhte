@@ -1,11 +1,12 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { Check, Plus, Wallet } from 'lucide-react';
 import { Link } from '../router/Link';
-import { TransactionType, readErrorMessage, type Transaction } from '../api';
+import { AccountType, TransactionType, readErrorMessage, type Transaction } from '../api';
 import { useFinance } from '../store/financeContext';
 import { useToast } from '../store/toastContext';
 import { expenseCategories, getCategory, incomeCategories } from '../lib/categories';
-import { compactNumber, currencyLabel, cx, formatNumber, toEn } from '../lib/format';
+import { accountUnitSuffix, isForeignUnitAccount } from '../lib/analytics';
+import { compactNumber, cx, formatNumber, toEn } from '../lib/format';
 import { Button } from './ui/Button';
 import { SelectField, TextField } from './ui/Field';
 import { Segmented } from './ui/Segmented';
@@ -24,7 +25,7 @@ export function TransactionForm({
   defaultType = TransactionType.Expense,
   transaction,
 }: TransactionFormProps) {
-  const { accounts, addTransaction, editTransaction } = useFinance();
+  const { accounts, addTransaction, editTransaction, accountById } = useFinance();
   const { showToast } = useToast();
 
   const isEdit = transaction !== undefined;
@@ -55,6 +56,23 @@ export function TransactionForm({
   const numericAmount = Number(toEn(amount).replace(/[^\d]/g, ''));
   const isTransfer = type === TransactionType.Transfer;
 
+  // واحد مبلغ باید از حساب واقعاً انتخاب‌شده بیاید، نه همیشه اولین حساب کاربر —
+  // وگرنه روی حساب دلاری/رمزارزی، کاربر عددی را به‌گمان ریال وارد می‌کند که
+  // مستقیم و بدون تبدیل از موجودی همان واحد خارجی کم/زیاد می‌شود.
+  const sourceAccount = accountById(effectiveSource);
+  const destinationAccount = accountById(effectiveDestination);
+  const relevantAccount = type === TransactionType.Income ? destinationAccount : sourceAccount;
+  const amountSuffix = relevantAccount ? accountUnitSuffix(relevantAccount) : 'ریال';
+
+  const sameTransferUnit = (a: NonNullable<typeof sourceAccount>, b: NonNullable<typeof destinationAccount>) => {
+    if (isForeignUnitAccount(a) !== isForeignUnitAccount(b)) return false;
+    if (!isForeignUnitAccount(a)) return true;
+    if (a.type !== b.type) return false;
+    if (a.type === AccountType.Currency) return a.currencyCode === b.currencyCode;
+    if (a.type === AccountType.Crypto) return a.cryptoSymbol === b.cryptoSymbol;
+    return true;
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -65,6 +83,10 @@ export function TransactionForm({
     }
     if (isTransfer && effectiveSource === effectiveDestination) {
       setError('حساب مبدأ و مقصد نباید یکسان باشند.');
+      return;
+    }
+    if (isTransfer && sourceAccount && destinationAccount && !sameTransferUnit(sourceAccount, destinationAccount)) {
+      setError('این دو حساب واحد متفاوتی دارند (مثلاً یکی ریالی و دیگری ارزی) — انتقال مستقیم بین آن‌ها ممکن نیست.');
       return;
     }
     if (accounts.length === 0) {
@@ -93,9 +115,8 @@ export function TransactionForm({
       const typeLabel =
         type === TransactionType.Income ? 'درآمد' : type === TransactionType.Expense ? 'هزینه' : 'انتقال';
       const categoryLabel = !isTransfer ? ` · ${getCategory(payload.category).label}` : '';
-      const currency = currencyLabel(accounts[0]?.currencyCode);
       showToast(
-        `${formatNumber(numericAmount)} ${currency} ${typeLabel}${categoryLabel} ${isEdit ? 'ویرایش شد' : 'ثبت شد'}`,
+        `${formatNumber(numericAmount)} ${amountSuffix} ${typeLabel}${categoryLabel} ${isEdit ? 'ویرایش شد' : 'ثبت شد'}`,
       );
 
       setSuccess(true);
@@ -159,7 +180,7 @@ export function TransactionForm({
           placeholder="۰"
           value={amount}
           onChange={(event) => setAmount(event.target.value)}
-          suffix={currencyLabel(accounts[0]?.currencyCode)}
+          suffix={amountSuffix}
           icon={<Wallet size={16} />}
           className="[&_input]:text-lg [&_input]:font-bold"
         />

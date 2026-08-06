@@ -3,6 +3,7 @@ import { ActionMenu } from './ui/ActionMenu';
 import { TransactionType, type Transaction } from '../api';
 import { getCategory } from '../lib/categories';
 import { useFinance } from '../store/financeContext';
+import { accountUnitSuffix, isForeignUnitAccount } from '../lib/analytics';
 import { cx, formatNumber, formatTime, relativeDay } from '../lib/format';
 
 interface TransactionRowProps {
@@ -108,7 +109,10 @@ export function TransactionRow({
       </div>
 
       <p className={cx('num shrink-0 text-sm font-bold whitespace-nowrap sm:text-base', amountClass)}>
-        {sign} {formatNumber(transaction.amount)}
+        {sign} {formatNumber(transaction.amount, isForeignUnitAccount(account) ? 2 : 0)}
+        {account && (
+          <span className="mr-1 text-[10px] font-normal opacity-70">{accountUnitSuffix(account)}</span>
+        )}
       </p>
 
       {!selectable && (onEdit || onDelete) && (

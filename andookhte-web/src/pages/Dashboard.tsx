@@ -5,7 +5,8 @@ import {
 } from 'lucide-react';
 import { useFinance } from '../store/financeContext';
 import {
-  byCategory, computeTotals, dailySeries, periodComparison, sumBalance, withinDays,
+  byCategory, computeTotals, dailySeries, excludeForeignUnitTransactions, periodComparison,
+  sumBalance, withinDays,
 } from '../lib/analytics';
 import { ACCOUNT_TYPE_LABEL, type Account } from '../api';
 import { currencyLabel, formatNumber } from '../lib/format';
@@ -27,12 +28,18 @@ export function Dashboard() {
   const [range, setRange] = useState(30);
   const [detail, setDetail] = useState<{ account: Account; editing: boolean } | null>(null);
 
-  const scoped = useMemo(() => withinDays(transactions, range), [transactions, range]);
+  // تراکنش‌های حساب ارز/رمزارز به واحد خودشان‌اند (دلار، بیت‌کوین، ...)؛ قاطی‌کردنشان
+  // با جمع‌های ریالی زیر، عددی بی‌معنی می‌ساخت.
+  const rialTransactions = useMemo(
+    () => excludeForeignUnitTransactions(transactions, accounts),
+    [transactions, accounts],
+  );
+  const scoped = useMemo(() => withinDays(rialTransactions, range), [rialTransactions, range]);
   const totals = useMemo(() => computeTotals(accounts, scoped), [accounts, scoped]);
-  const comparison = useMemo(() => periodComparison(transactions, range), [transactions, range]);
-  const daily = useMemo(() => dailySeries(transactions, range), [transactions, range]);
+  const comparison = useMemo(() => periodComparison(rialTransactions, range), [rialTransactions, range]);
+  const daily = useMemo(() => dailySeries(rialTransactions, range), [rialTransactions, range]);
   const slices = useMemo(() => byCategory(scoped, 'expense', 6), [scoped]);
-  const currency = currencyLabel(accounts[0]?.currencyCode);
+  const currency = currencyLabel('IRR');
 
   if (loading) {
     return (

@@ -1,6 +1,35 @@
 import { AccountType, TransactionType, type Account, type Transaction } from '../api';
 import { getCategory } from './categories';
-import { persianMonthName, rialEquivalent } from './format';
+import { currencyLabel, currencySymbol, persianMonthName, rialEquivalent } from './format';
+
+/** حساب‌های ارز و رمزارز به واحد خودشان‌اند (دلار، بیت‌کوین، ...)، نه ریال. */
+export const isForeignUnitAccount = (account?: Account): boolean =>
+  !!account && (account.type === AccountType.Currency || account.type === AccountType.Crypto);
+
+/** نماد/برچسب واحدی که مبلغ این حساب باید کنارش نمایش داده شود. */
+export const accountUnitSuffix = (account: Account): string => {
+  if (account.type === AccountType.Crypto) return account.cryptoSymbol || 'واحد';
+  if (account.type === AccountType.Currency) {
+    return currencySymbol(account.currencyCode) || currencyLabel(account.currencyCode);
+  }
+  return currencyLabel(account.currencyCode);
+};
+
+/**
+ * آیا این تراکنش کاملاً ریالی است؟ اگر حساب مبدأ یا مقصدش ارز/رمزارز باشد، مبلغش
+ * به همان واحد خارجی ثبت شده — نه ریال — و نباید در جمع‌های ریالی (داشبورد، تحلیل) بیاید.
+ * حسابی که دیگر پیدا نشود (حذف‌شده) ریالی فرض می‌شود، نه مسدودکننده.
+ */
+export const isRialTransaction = (tx: Transaction, accounts: Account[]): boolean => {
+  const source = accounts.find((a) => a.id === tx.sourceAccountId);
+  const destination = accounts.find((a) => a.id === tx.destinationAccountId);
+  return !isForeignUnitAccount(source) && !isForeignUnitAccount(destination);
+};
+
+export const excludeForeignUnitTransactions = (
+  transactions: Transaction[],
+  accounts: Account[],
+): Transaction[] => transactions.filter((tx) => isRialTransaction(tx, accounts));
 
 export interface Totals {
   balance: number;
@@ -23,8 +52,7 @@ export const isTransfer = (tx: Transaction) => tx.type === TransactionType.Trans
  */
 export const sumBalance = (accounts: Account[]): number =>
   accounts.reduce((acc, cur) => {
-    const isForeignUnit = cur.type === AccountType.Currency || cur.type === AccountType.Crypto;
-    if (!isForeignUnit) return acc + (cur.currentBalance || 0);
+    if (!isForeignUnitAccount(cur)) return acc + (cur.currentBalance || 0);
     return acc + (rialEquivalent(cur.currentBalance || 0, cur.manualRateIrr) ?? 0);
   }, 0);
 

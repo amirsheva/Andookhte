@@ -32,7 +32,9 @@ export function Accounts() {
   const editingAccount = accounts.find((a) => a.id === editingId) ?? null;
 
   const canEdit = hasRole(activeWorkspace?.role, WorkspaceRole.Accountant);
-  const currency = currencyLabel(accounts[0]?.currencyCode ?? activeWorkspace?.currencyCode);
+  // مجموع همیشه ریالی است (sumBalance حساب‌های ارزی/رمزارزی را با نرخ تبدیل می‌کند)،
+  // پس نباید برچسبش از واحد اولین حساب کاربر بیاید — ممکن است آن حساب خودش دلاری باشد.
+  const currency = currencyLabel('IRR');
   const total = sumBalance(accounts);
 
   if (loading) {

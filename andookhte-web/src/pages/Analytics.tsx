@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Scale, Target, TrendingDown, TrendingUp } from 'lucide-react';
 import { useFinance } from '../store/financeContext';
-import { byCategory, computeTotals, dailySeries, monthlySeries, withinDays } from '../lib/analytics';
+import {
+  byCategory, computeTotals, dailySeries, excludeForeignUnitTransactions, monthlySeries, withinDays,
+} from '../lib/analytics';
 import { compactNumber, currencyLabel, cx, formatNumber } from '../lib/format';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Segmented } from '../components/ui/Segmented';
@@ -16,12 +18,16 @@ export function Analytics() {
   const [range, setRange] = useState(90);
   const [kind, setKind] = useState<'expense' | 'income'>('expense');
 
-  const scoped = useMemo(() => withinDays(transactions, range), [transactions, range]);
+  const rialTransactions = useMemo(
+    () => excludeForeignUnitTransactions(transactions, accounts),
+    [transactions, accounts],
+  );
+  const scoped = useMemo(() => withinDays(rialTransactions, range), [rialTransactions, range]);
   const totals = useMemo(() => computeTotals(accounts, scoped), [accounts, scoped]);
   const slices = useMemo(() => byCategory(scoped, kind, 8), [scoped, kind]);
-  const daily = useMemo(() => dailySeries(transactions, range), [transactions, range]);
-  const monthly = useMemo(() => monthlySeries(transactions, 6), [transactions]);
-  const currency = currencyLabel(accounts[0]?.currencyCode);
+  const daily = useMemo(() => dailySeries(rialTransactions, range), [rialTransactions, range]);
+  const monthly = useMemo(() => monthlySeries(rialTransactions, 6), [rialTransactions]);
+  const currency = currencyLabel('IRR');
 
   const savingRate = totals.income > 0 ? (totals.net / totals.income) * 100 : 0;
   const dailyAverage = totals.expense / Math.max(1, range);

@@ -11,6 +11,7 @@ import { useFinance } from '../store/financeContext';
 import { useToast } from '../store/toastContext';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { CATEGORIES, getCategory } from '../lib/categories';
+import { excludeForeignUnitTransactions } from '../lib/analytics';
 import { compactNumber, cx, formatNumber, relativeDay } from '../lib/format';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
@@ -188,14 +189,16 @@ export function Transactions() {
   }, [filtered]);
 
   const summary = useMemo(() => {
+    // مبلغ حساب ارز/رمزارز به واحد خودش است (دلار، بیت‌کوین، ...)، نه ریال — قاطی‌کردنش
+    // با بقیه یک عدد بی‌معنی می‌ساخت. شمارش تراکنش‌ها همچنان همه را حساب می‌کند.
     let income = 0;
     let expense = 0;
-    for (const tx of filtered) {
+    for (const tx of excludeForeignUnitTransactions(filtered, accounts)) {
       if (tx.type === TransactionType.Income) income += tx.amount;
       else if (tx.type === TransactionType.Expense) expense += tx.amount;
     }
     return { income, expense, count: filtered.length };
-  }, [filtered]);
+  }, [filtered, accounts]);
 
   const activeFilters =
     (typeFilter !== 'all' ? 1 : 0) +
@@ -335,7 +338,7 @@ export function Transactions() {
       ) : (
         <div className="space-y-5">
           {grouped.map(([day, items]) => {
-            const dayTotal = items.reduce(
+            const dayTotal = excludeForeignUnitTransactions(items, accounts).reduce(
               (acc, tx) =>
                 tx.type === TransactionType.Income
                   ? acc + tx.amount

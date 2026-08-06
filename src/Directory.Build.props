@@ -1,0 +1,7 @@
+<Project>
+  <!-- نسخهٔ مشترک همهٔ پروژه‌های بک‌اند. هنگام هر انتشار قابل‌توجه، همراه با
+       andookhte-web/package.json و CHANGELOG.md به‌روزرسانی می‌شود. -->
+  <PropertyGroup>
+    <Version>1.5.1</Version>
+  </PropertyGroup>
+</Project>

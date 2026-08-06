@@ -7,7 +7,6 @@ import {
   DebtDirection, DebtRecurrenceType, DEBT_DIRECTION_LABEL, DEBT_RECURRENCE_LABEL,
   InstallmentStatus, readErrorMessage, type Debt as DebtRecord, type Installment,
 } from '../api';
-import { useAuth } from '../store/authContext';
 import { useDebts } from '../store/debtsContext';
 import { useFinance } from '../store/financeContext';
 import { useToast } from '../store/toastContext';
@@ -29,8 +28,6 @@ type Entry = { debt: DebtRecord; installment: Installment };
 
 export function Debts() {
   const { debts, loading, error, removeDebt, extendDebt } = useDebts();
-  const { accounts } = useFinance();
-  const { activeWorkspace } = useAuth();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [month, setMonth] = useState<JalaliYm>(todayJalali());
@@ -38,7 +35,9 @@ export function Debts() {
   const [deleting, setDeleting] = useState<DebtRecord | null>(null);
   const [rescheduling, setRescheduling] = useState<DebtRecord | null>(null);
 
-  const currency = currencyLabel(accounts[0]?.currencyCode ?? activeWorkspace?.currencyCode);
+  // مبلغ بدهی/طلب همیشه ریالی است — این موجودیت واحد پول جدا ندارد، پس نباید
+  // از واحد اولین حساب کاربر (که ممکن است دلاری/رمزارزی باشد) گرفته شود.
+  const currency = currencyLabel('IRR');
 
   const allEntries = useMemo<Entry[]>(
     () => debts.flatMap((debt) => debt.installments.map((installment) => ({ debt, installment }))),
