@@ -48,7 +48,42 @@ public class TransactionsController : ControllerBase
         await _mediator.Send(new DeleteTransactionCommand(id), ct);
         return NoContent();
     }
+
+    /// <summary>حذف دسته‌جمعی — هر ردیف جدا موفق/ناموفق گزارش می‌شود، نه همه‌یا‌هیچ.</summary>
+    [HttpPost("bulk-delete")]
+    public async Task<ActionResult<BulkDeleteResult>> BulkDelete(
+        [FromBody] BulkDeleteBody body, CancellationToken ct)
+        => Ok(await _mediator.Send(new BulkDeleteTransactionsCommand(body.Ids), ct));
+
+    [HttpGet("export")]
+    public async Task<IActionResult> Export([FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken ct)
+    {
+        var bytes = await _mediator.Send(new ExportTransactionsQuery(from, to), ct);
+        return File(
+            bytes,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            $"andookhte-transactions-{DateTime.UtcNow:yyyyMMdd}.xlsx");
+    }
+
+    /// <summary>
+    /// ورود دسته‌جمعی از همان قالب فایلی که «خروجی اکسل» می‌سازد. هر ردیف جدا
+    /// اعتبارسنجی می‌شود — یک ردیف خراب بقیهٔ فایل را متوقف نمی‌کند.
+    /// </summary>
+    [HttpPost("import")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<ActionResult<ImportTransactionsResult>> Import(IFormFile file, CancellationToken ct)
+    {
+        if (file.Length == 0)
+            return BadRequest(new { message = "فایلی انتخاب نشده است." });
+
+        using var stream = new MemoryStream();
+        await file.CopyToAsync(stream, ct);
+
+        return Ok(await _mediator.Send(new ImportTransactionsCommand(stream.ToArray()), ct));
+    }
 }
+
+public record BulkDeleteBody(List<Guid> Ids);
 
 public record UpdateTransactionBody(
     TransactionType Type,

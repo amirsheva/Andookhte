@@ -11,6 +11,7 @@ public interface IAppDbContext
     DbSet<User> Users { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<OtpCode> OtpCodes { get; }
+    DbSet<ApiKey> ApiKeys { get; }
 
     DbSet<Workspace> Workspaces { get; }
     DbSet<WorkspaceMember> WorkspaceMembers { get; }

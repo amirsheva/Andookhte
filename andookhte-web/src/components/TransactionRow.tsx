@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Pencil, Trash2 } from 'lucide-react';
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Check, Pencil, Trash2 } from 'lucide-react';
 import { ActionMenu } from './ui/ActionMenu';
 import { TransactionType, type Transaction } from '../api';
 import { getCategory } from '../lib/categories';
@@ -11,6 +11,10 @@ interface TransactionRowProps {
   showAccount?: boolean;
   onEdit?: (transaction: Transaction) => void;
   onDelete?: (transaction: Transaction) => void;
+  /** حالت انتخاب چندتایی — به‌جای منوی عملیات، چک‌باکس نمایش داده می‌شود */
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
 export function TransactionRow({
@@ -19,6 +23,9 @@ export function TransactionRow({
   showAccount = true,
   onEdit,
   onDelete,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
 }: TransactionRowProps) {
   const { accountById } = useFinance();
   const meta = getCategory(transaction.category);
@@ -43,23 +50,39 @@ export function TransactionRow({
   return (
     <div
       style={{ animationDelay: `${Math.min(index, 12) * 45}ms` }}
-      className="group flex animate-[rise_.55s_cubic-bezier(.16,1,.3,1)_both] items-center gap-3.5 rounded-3xl px-3 py-3 transition-colors duration-300 hover:bg-slate-500/6 dark:hover:bg-white/5 sm:px-4"
+      onClick={selectable ? onToggleSelect : undefined}
+      className={cx(
+        'group flex animate-[rise_.55s_cubic-bezier(.16,1,.3,1)_both] items-center gap-3.5 rounded-3xl px-3 py-3 transition-colors duration-300 hover:bg-slate-500/6 dark:hover:bg-white/5 sm:px-4',
+        selectable && 'cursor-pointer',
+        selected && 'bg-brand-500/8 dark:bg-brand-500/10',
+      )}
     >
-      <span
-        className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl transition-transform duration-300 group-hover:scale-110"
-        style={{ background: `rgb(${meta.rgb} / .14)`, boxShadow: `inset 0 0 0 1px rgb(${meta.rgb} / .22)` }}
-      >
-        <Icon size={18} style={{ color: `rgb(${meta.rgb})` }} />
+      {selectable ? (
         <span
-          className="absolute -bottom-1 -left-1 grid h-5 w-5 place-items-center rounded-full text-[9px]"
-          style={{
-            background: isTransfer ? 'rgb(51 100 255)' : isIncome ? 'rgb(16 185 129)' : 'rgb(244 63 94)',
-            color: '#fff',
-          }}
+          className={cx(
+            'grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 transition',
+            selected ? 'border-brand-500 bg-brand-500 text-white' : 'border-slate-400/50 text-transparent',
+          )}
         >
-          <DirectionIcon size={11} />
+          <Check size={14} />
         </span>
-      </span>
+      ) : (
+        <span
+          className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl transition-transform duration-300 group-hover:scale-110"
+          style={{ background: `rgb(${meta.rgb} / .14)`, boxShadow: `inset 0 0 0 1px rgb(${meta.rgb} / .22)` }}
+        >
+          <Icon size={18} style={{ color: `rgb(${meta.rgb})` }} />
+          <span
+            className="absolute -bottom-1 -left-1 grid h-5 w-5 place-items-center rounded-full text-[9px]"
+            style={{
+              background: isTransfer ? 'rgb(51 100 255)' : isIncome ? 'rgb(16 185 129)' : 'rgb(244 63 94)',
+              color: '#fff',
+            }}
+          >
+            <DirectionIcon size={11} />
+          </span>
+        </span>
+      )}
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">
@@ -88,7 +111,7 @@ export function TransactionRow({
         {sign} {formatNumber(transaction.amount)}
       </p>
 
-      {(onEdit || onDelete) && (
+      {!selectable && (onEdit || onDelete) && (
         <ActionMenu
           label={`عملیات ${transaction.description ?? meta.label}`}
           className="shrink-0"

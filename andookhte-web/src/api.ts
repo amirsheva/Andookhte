@@ -10,7 +10,7 @@ declare module 'axios' {
   }
 }
 
-const API_BASE_URL: string =
+export const API_BASE_URL: string =
   (import.meta.env?.VITE_API_BASE_URL as string | undefined) ?? 'https://localhost:7101/api';
 
 export const http = axios.create({ baseURL: API_BASE_URL, timeout: 15000 });
@@ -397,6 +397,35 @@ export const profileApi = {
     (await http.post<AuthUser>('/Profile/verify/confirm', { channel, code })).data,
 };
 
+/* ————————————————— کلیدهای API (برای اتوماسیون‌هایی مثل شورتکات آیفون) ————————————————— */
+
+export interface ApiKeySummary {
+  id: string;
+  label: string;
+  lastFour: string;
+  createdAtUtc: string;
+  lastUsedAtUtc?: string | null;
+  isRevoked: boolean;
+}
+
+export interface CreatedApiKey {
+  id: string;
+  label: string;
+  rawKey: string;
+  createdAtUtc: string;
+}
+
+export const apiKeysApi = {
+  list: async (): Promise<ApiKeySummary[]> => (await http.get<ApiKeySummary[]>('/ApiKeys')).data,
+
+  create: async (label: string): Promise<CreatedApiKey> =>
+    (await http.post<CreatedApiKey>('/ApiKeys', { label })).data,
+
+  revoke: async (id: string): Promise<void> => {
+    await http.delete(`/ApiKeys/${id}`);
+  },
+};
+
 /* ————————————————— فضای کاری ————————————————— */
 
 export const workspaceApi = {
@@ -405,6 +434,10 @@ export const workspaceApi = {
 
   create: async (input: { name: string; type: number; currencyCode?: string }): Promise<WorkspaceSummary> =>
     (await http.post<WorkspaceSummary>('/Workspaces', input)).data,
+
+  rename: async (name: string): Promise<void> => {
+    await http.put('/Workspaces', { name });
+  },
 
   members: async (): Promise<WorkspaceMember[]> =>
     (await http.get<WorkspaceMember[]>('/Workspaces/members')).data,
@@ -477,6 +510,49 @@ export const updateTransaction = async (id: string, data: UpdateTransactionInput
 
 export const deleteTransaction = async (id: string) => {
   await http.delete(`/Transactions/${id}`);
+};
+
+export interface BulkRowResult {
+  /** برای حذف دسته‌جمعی برابر شناسهٔ تراکنش، برای ورودی اکسل برابر شمارهٔ ردیف در فایل */
+  key: string | number;
+  succeeded: boolean;
+  error?: string | null;
+}
+
+export interface BulkOperationResult {
+  succeededCount: number;
+  failedCount: number;
+  rows: BulkRowResult[];
+}
+
+export const bulkDeleteTransactions = async (ids: string[]): Promise<BulkOperationResult> => {
+  const res = await http.post('/Transactions/bulk-delete', { ids });
+  const payload = res.data as { succeededCount: number; failedCount: number; rows: { id: string; succeeded: boolean; error?: string | null }[] };
+  return {
+    succeededCount: payload.succeededCount,
+    failedCount: payload.failedCount,
+    rows: payload.rows.map((r) => ({ key: r.id, succeeded: r.succeeded, error: r.error })),
+  };
+};
+
+/** فایل اکسل را به‌صورت Blob برمی‌گرداند تا کلاینت خودش دانلودش کند. */
+export const exportTransactionsExcel = async (): Promise<Blob> => {
+  const res = await http.get('/Transactions/export', { responseType: 'blob' });
+  return res.data as Blob;
+};
+
+export const importTransactionsExcel = async (file: File): Promise<BulkOperationResult> => {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await http.post('/Transactions/import', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  const payload = res.data as { succeededCount: number; failedCount: number; rows: { rowNumber: number; succeeded: boolean; error?: string | null }[] };
+  return {
+    succeededCount: payload.succeededCount,
+    failedCount: payload.failedCount,
+    rows: payload.rows.map((r) => ({ key: r.rowNumber, succeeded: r.succeeded, error: r.error })),
+  };
 };
 
 /* ————————————————— بدهی و طلب ————————————————— */

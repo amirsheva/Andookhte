@@ -5,6 +5,57 @@
 
 ---
 
+## روند همیشگی (روش فعلی — VPS + Docker از پیش‌ساخته)
+
+از این به بعد هر deploy همین ۵ مرحله است، به همین ترتیب. جزئیات هرکدام و راه‌حل مشکلات
+رایج در بخش «روش پیشنهادی» پایین‌تر هست؛ این‌جا فقط چک‌لیست سریع است.
+
+**۱) ساخت خروجی — روی سیستم خودت (Windows)**
+
+```powershell
+cd D:\Amir\Andookhte
+powershell -ExecutionPolicy Bypass -File .\publish.ps1 -ApiUrl "http://95.38.188.15/api"
+```
+
+**۲) کامیت و پوش**
+
+```bash
+git add -A
+git commit -m "توضیح کوتاه تغییرات"
+git push
+```
+
+**۳) انتقال فایل‌ها به سرور (FileZilla)** — در `/opt/andookhte`، جایگزین نسخه‌ی قبلی کن:
+
+| این دور چه چیزی تغییر کرده | چه چیزی را آپلود کن |
+|---|---|
+| فقط فرانت‌اند (ظاهر، صفحات) | فقط `andookhte-web/dist/` |
+| بک‌اند هم عوض شده (Controller، Command، Entity، مایگریشن) | هم `deploy/api/` هم `andookhte-web/dist/` |
+| `nginx.conf` / `Dockerfile.prebuilt` / `docker-compose.prebuilt.yml` | همان فایل خاص را هم بفرست (به‌ندرت) |
+
+**۴) روی سرور (SSH)**
+
+```bash
+cd /opt/andookhte
+docker compose -f docker-compose.prebuilt.yml up -d --build
+```
+
+مایگریشن‌های جدید بک‌اند خودکار موقع بالا آمدن اجرا می‌شوند — دستور دستی لازم نیست.
+
+**۵) تأیید**
+
+```bash
+docker compose -f docker-compose.prebuilt.yml ps
+docker compose -f docker-compose.prebuilt.yml logs api --tail 50
+```
+
+و در مرورگر: `http://95.38.188.15`
+
+> **هرگز** روی سرور `docker compose down -v` نزن مگر واقعاً بخواهی دیتابیس واقعی پاک شود —
+> این فلگ ولوم دیتابیس را هم حذف می‌کند.
+
+---
+
 ## ۰. تغییر مهم: دیتابیس دیگر SQLite نیست
 
 پروژه به **PostgreSQL** منتقل شد و SQLite کاملاً حذف شد. دو دلیل:
@@ -132,8 +183,11 @@ kill شود. سیستم شما هیچ‌کدام از این دو مشکل را 
 
 ```powershell
 cd D:\Amir\Andookhte
-.\publish.ps1 -ApiUrl "http://95.38.188.15:8080/api"
+.\publish.ps1 -ApiUrl "http://95.38.188.15/api"
 ```
+
+> پورت API دیگر مستقیماً به بیرون باز نیست — nginx در کانتینر `web` مسیر `/api` را به کانتینر
+> `api` پراکسی می‌کند (به همین دلیل بدون `:8080`).
 
 ### انتقال با FileZilla
 

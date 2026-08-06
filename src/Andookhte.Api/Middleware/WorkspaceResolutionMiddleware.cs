@@ -1,3 +1,4 @@
+using Andookhte.Api.Security;
 using Andookhte.Api.Services;
 using Andookhte.Application.Common.Exceptions;
 using Andookhte.Application.Common.Interfaces;
@@ -49,16 +50,21 @@ public class WorkspaceResolutionMiddleware
 
     private static Guid? ReadRequestedWorkspaceId(HttpContext context)
     {
-        if (!context.Request.Headers.TryGetValue(HeaderName, out var values))
-            return null;
+        if (context.Request.Headers.TryGetValue(HeaderName, out var values))
+        {
+            var raw = values.ToString();
+            if (!string.IsNullOrWhiteSpace(raw))
+            {
+                if (!Guid.TryParse(raw, out var id))
+                    throw new ValidationException($"مقدار هدر {HeaderName} یک شناسهٔ معتبر نیست.");
 
-        var raw = values.ToString();
-        if (string.IsNullOrWhiteSpace(raw))
-            return null;
+                return id;
+            }
+        }
 
-        if (!Guid.TryParse(raw, out var id))
-            throw new ValidationException($"مقدار هدر {HeaderName} یک شناسهٔ معتبر نیست.");
-
-        return id;
+        // کلید API به یک فضای کاری خاص محدود است؛ اگر هدر نیامده باشد (مثلاً از شورتکات
+        // آیفون که هدرهای اضافه در آن دردسرساز است)، همان فضای کاریِ متصل به کلید انتخاب می‌شود.
+        var claim = context.User.FindFirst(ApiKeyClaimTypes.WorkspaceId)?.Value;
+        return Guid.TryParse(claim, out var fromApiKey) ? fromApiKey : null;
     }
 }

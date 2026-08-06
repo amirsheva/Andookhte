@@ -127,6 +127,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const renameWorkspace = useCallback(async (name: string) => {
+    await workspaceApi.rename(name);
+    setWorkspaces(await workspaceApi.list());
+  }, []);
+
   const activeWorkspace = useMemo(
     () => workspaces.find((w) => w.id === activeWorkspaceId) ?? workspaces[0] ?? null,
     [workspaces, activeWorkspaceId],
@@ -147,13 +152,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       switchWorkspace,
       createWorkspace,
+      renameWorkspace,
       reloadProfile: loadProfile,
     }),
     [
       status, user, workspaces, activeWorkspace,
       loginWithPassword, register, requestOtp, verifyOtp,
       requestPasswordReset, resetPassword,
-      logout, switchWorkspace, createWorkspace, loadProfile,
+      logout, switchWorkspace, createWorkspace, renameWorkspace, loadProfile,
     ],
   );
 

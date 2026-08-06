@@ -31,6 +31,7 @@ export interface AuthContextValue {
   logout: (allDevices?: boolean) => Promise<void>;
   switchWorkspace: (workspaceId: string) => void;
   createWorkspace: (input: { name: string; type: number; currencyCode?: string }) => Promise<void>;
+  renameWorkspace: (name: string) => Promise<void>;
   reloadProfile: () => Promise<void>;
 }
 

@@ -1,8 +1,14 @@
-import { useDeferredValue, useMemo, useState } from 'react';
-import { ChevronDown, Filter, Loader2, Plus, Search, X } from 'lucide-react';
-import { TransactionType, WorkspaceRole, type Transaction } from '../api';
+import { useDeferredValue, useMemo, useRef, useState } from 'react';
+import {
+  CheckSquare, ChevronDown, Download, Filter, Loader2, Plus, Search, Upload, X, XSquare,
+} from 'lucide-react';
+import {
+  exportTransactionsExcel, readErrorMessage, TransactionType, WorkspaceRole,
+  type BulkOperationResult, type Transaction,
+} from '../api';
 import { useAuth, hasRole } from '../store/authContext';
 import { useFinance } from '../store/financeContext';
+import { useToast } from '../store/toastContext';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { CATEGORIES, getCategory } from '../lib/categories';
 import { compactNumber, cx, formatNumber, relativeDay } from '../lib/format';
@@ -14,6 +20,7 @@ import { TextField, SelectField } from '../components/ui/Field';
 import { SkeletonRow } from '../components/ui/Skeleton';
 import { TransactionRow } from '../components/TransactionRow';
 import { TransactionForm } from '../components/TransactionForm';
+import { ActionMenu, type ActionMenuItem } from '../components/ui/ActionMenu';
 
 type TypeFilter = 'all' | 'income' | 'expense' | 'transfer';
 
@@ -27,9 +34,10 @@ const TYPE_MATCH: Record<TypeFilter, (tx: Transaction) => boolean> = {
 export function Transactions() {
   const {
     transactions, accounts, loading, loadingMore, hasMore, totalTransactions,
-    loadMore, removeTransaction,
+    loadMore, removeTransaction, bulkRemoveTransactions, importTransactions,
   } = useFinance();
   const { activeWorkspace } = useAuth();
+  const { showToast } = useToast();
 
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
@@ -40,7 +48,113 @@ export function Transactions() {
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
 
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
+
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importResult, setImportResult] = useState<BulkOperationResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const canEdit = hasRole(activeWorkspace?.role, WorkspaceRole.Accountant);
+
+  const toggleSelectMode = () => {
+    setSelectMode((value) => !value);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleExport = async () => {
+    setExportBusy(true);
+    try {
+      const blob = await exportTransactionsExcel();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `andookhte-transactions-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      showToast(readErrorMessage(err, 'خروجی اکسل با خطا مواجه شد.'));
+    } finally {
+      setExportBusy(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const result = await bulkRemoveTransactions([...selectedIds]);
+    setSelectedIds(new Set());
+    if (result.failedCount === 0) {
+      showToast(`${formatNumber(result.succeededCount)} تراکنش حذف شد`);
+      setSelectMode(false);
+    } else {
+      showToast(
+        `${formatNumber(result.succeededCount)} حذف شد، ${formatNumber(result.failedCount)} ناموفق`,
+      );
+    }
+  };
+
+  const handleImport = async () => {
+    if (!importFile) return;
+    setImportError(null);
+    setImportBusy(true);
+    try {
+      const result = await importTransactions(importFile);
+      setImportResult(result);
+      setImportFile(null);
+    } catch (err) {
+      setImportError(readErrorMessage(err, 'ورود اطلاعات با خطا مواجه شد.'));
+    } finally {
+      setImportBusy(false);
+    }
+  };
+
+  const closeImport = () => {
+    setImportOpen(false);
+    setImportFile(null);
+    setImportError(null);
+    setImportResult(null);
+  };
+
+  const moreMenuItems: ActionMenuItem[] = [
+    {
+      key: 'export',
+      label: exportBusy ? 'در حال آماده‌سازی...' : 'خروجی اکسل',
+      icon: <Download size={14} />,
+      onSelect: () => void handleExport(),
+      disabled: exportBusy,
+    },
+    ...(canEdit
+      ? [
+          {
+            key: 'import',
+            label: 'ورودی از اکسل',
+            icon: <Upload size={14} />,
+            onSelect: () => setImportOpen(true),
+          },
+          {
+            key: 'select',
+            label: selectMode ? 'لغو انتخاب چندتایی' : 'انتخاب چندتایی',
+            icon: selectMode ? <XSquare size={14} /> : <CheckSquare size={14} />,
+            onSelect: toggleSelectMode,
+          },
+        ]
+      : []),
+  ];
 
   const deferredQuery = useDeferredValue(query);
 
@@ -134,6 +248,13 @@ export function Transactions() {
             <Plus size={16} />
             ثبت جدید
           </Button>
+
+          <ActionMenu
+            label="عملیات بیشتر"
+            align="end"
+            items={moreMenuItems}
+            className="glass-soft h-11 w-11 rounded-2xl"
+          />
         </div>
 
         {/* خلاصهٔ نتایج */}
@@ -160,6 +281,44 @@ export function Transactions() {
           )}
         </div>
       </GlassCard>
+
+      {/* نوار عملیات دسته‌جمعی */}
+      {selectMode && (
+        <GlassCard glow="51 100 255" className="flex flex-wrap items-center gap-3 py-3.5">
+          <span className="num text-xs font-semibold">
+            {formatNumber(selectedIds.size)} مورد انتخاب شده
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedIds(new Set(filtered.map((tx) => tx.id)))}
+            className="text-xs text-brand-500 transition hover:underline"
+          >
+            انتخاب همه
+          </button>
+          {selectedIds.size > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="text-xs text-dim transition hover:underline"
+            >
+              پاک‌کردن انتخاب
+            </button>
+          )}
+          <div className="mr-auto flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="danger"
+              disabled={selectedIds.size === 0}
+              onClick={() => setBulkDeleteOpen(true)}
+            >
+              حذف ({formatNumber(selectedIds.size)})
+            </Button>
+            <Button size="sm" variant="ghost" onClick={toggleSelectMode}>
+              انصراف
+            </Button>
+          </div>
+        </GlassCard>
+      )}
 
       {/* فهرست */}
       {loading ? (
@@ -206,6 +365,9 @@ export function Transactions() {
                       index={index}
                       onEdit={canEdit ? setEditing : undefined}
                       onDelete={canEdit ? setDeleting : undefined}
+                      selectable={selectMode}
+                      selected={selectedIds.has(transaction.id)}
+                      onToggleSelect={() => toggleSelect(transaction.id)}
                     />
                   ))}
                 </GlassCard>
@@ -293,6 +455,111 @@ export function Transactions() {
           </>
         }
       />
+
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        onClose={() => setBulkDeleteOpen(false)}
+        onConfirm={handleBulkDelete}
+        title="حذف دسته‌جمعی"
+        confirmLabel="حذف کن"
+        description={
+          <>
+            <span className="num font-bold">{formatNumber(selectedIds.size)}</span> تراکنش حذف
+            می‌شود و مبلغ هرکدام به موجودی حساب برمی‌گردد. این کار قابل بازگشت نیست.
+          </>
+        }
+      />
+
+      {/* پنجرهٔ ورود از اکسل */}
+      <Modal open={importOpen} onClose={closeImport} title="ورودی از اکسل" width="max-w-lg">
+        <div className="space-y-4">
+          {!importResult && (
+            <>
+              <p className="text-xs leading-relaxed text-dim">
+                فایل باید همان قالب «خروجی اکسل» را داشته باشد — نام حساب‌ها باید دقیقاً با
+                نام حساب‌های موجود یکی باشد. هر ردیف جدا بررسی می‌شود؛ اگر ردیفی مشکل داشت،
+                بقیهٔ فایل هم‌چنان وارد می‌شود.
+              </p>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
+              />
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="glass-soft flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-6 text-xs text-dim transition hover:text-[var(--text-strong)]"
+              >
+                <Upload size={16} />
+                {importFile ? importFile.name : 'انتخاب فایل xlsx'}
+              </button>
+
+              {importError && (
+                <p className="rounded-2xl bg-rose-500/10 px-4 py-2.5 text-xs text-rose-500">{importError}</p>
+              )}
+
+              <div className="flex gap-3">
+                <Button variant="soft" className="flex-1" onClick={closeImport}>
+                  انصراف
+                </Button>
+                <Button
+                  className="flex-1"
+                  loading={importBusy}
+                  disabled={!importFile}
+                  onClick={() => void handleImport()}
+                >
+                  شروع ورود
+                </Button>
+              </div>
+            </>
+          )}
+
+          {importResult && (
+            <>
+              <div
+                className={cx(
+                  'rounded-2xl px-4 py-3.5 text-xs',
+                  importResult.failedCount === 0
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+                )}
+              >
+                <span className="num font-bold">{formatNumber(importResult.succeededCount)}</span> ردیف
+                با موفقیت ثبت شد
+                {importResult.failedCount > 0 && (
+                  <>
+                    {' · '}
+                    <span className="num font-bold">{formatNumber(importResult.failedCount)}</span> ردیف
+                    ناموفق
+                  </>
+                )}
+              </div>
+
+              {importResult.failedCount > 0 && (
+                <div className="max-h-64 space-y-1.5 overflow-y-auto">
+                  {importResult.rows
+                    .filter((row) => !row.succeeded)
+                    .map((row) => (
+                      <div key={row.key} className="glass-soft rounded-xl px-3 py-2 text-[11px]">
+                        <span className="num font-semibold">ردیف {formatNumber(Number(row.key))}</span>
+                        {' — '}
+                        <span className="text-rose-500">{row.error}</span>
+                      </div>
+                    ))}
+                </div>
+              )}
+
+              <Button className="w-full" onClick={closeImport}>
+                بستن
+              </Button>
+            </>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

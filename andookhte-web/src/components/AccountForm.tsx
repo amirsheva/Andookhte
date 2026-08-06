@@ -6,7 +6,7 @@ import { useFinance } from '../store/financeContext';
 import { useToast } from '../store/toastContext';
 import { BANK_OPTIONS, detectBank, isKnownBank, isValidCardNumber } from '../lib/banks';
 import {
-  compactNumber, currencyLabel, formatCardNumber, formatCurrency, rialEquivalent, toEn,
+  compactNumber, currencyLabel, cx, formatCardNumber, formatCurrency, rialEquivalent, toEn, toFa,
 } from '../lib/format';
 import { BankCard } from './BankCard';
 import { Button } from './ui/Button';
@@ -26,6 +26,21 @@ const ACCOUNT_TYPES: number[] = [
 const GOLD_PURITIES = [24, 22, 21, 18];
 
 const GOLD_ITEM_TYPES = ['طلای خام / آب‌شده', 'سکه', 'انگشتر', 'گردنبند', 'گوشواره', 'دستبند', 'سایر'];
+
+/** ارز داخلی — برای حساب بانکی، نقدی و صندوق پس‌انداز */
+const RIAL_CURRENCIES = [
+  { value: 'IRR', label: 'ریال' },
+  { value: 'IRT', label: 'تومان' },
+];
+
+/** ارز خارجی — فقط برای نوع حساب «ارز»؛ اینجا دیگر ریال/تومان معنا ندارد */
+const FOREIGN_CURRENCIES = [
+  { value: 'USD', label: 'دلار آمریکا' },
+  { value: 'EUR', label: 'یورو' },
+  { value: 'GBP', label: 'پوند' },
+  { value: 'AED', label: 'درهم امارات' },
+  { value: 'TRY', label: 'لیر ترکیه' },
+];
 
 interface AccountFormProps {
   /** اگر داده شود فرم در حالت ویرایش کار می‌کند. */
@@ -78,9 +93,28 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
   const isCurrency = type === AccountType.Currency;
   const isCrypto = type === AccountType.Crypto;
   const showNote = type === AccountType.SavingsFund || isGold || isCurrency || isCrypto;
-  const showRate = isCurrency || isCrypto;
+  const showRate = isCurrency || isCrypto || isGold;
   const numericRate = Number(toEn(manualRate).replace(/[^\d.]/g, '')) || 0;
-  const rateQuantity = isEdit ? account.currentBalance : numericBalance;
+  const numericGoldWeight = Number(toEn(goldWeight).replace(/[^\d.]/g, '')) || 0;
+  // برای طلا، ارزش روز از وزن × نرخ به‌دست می‌آید — نه از موجودی حساب (که همان
+  // مبلغ ریالی واقعی تراکنش‌هاست و نباید با تخمین بازار قاطی شود).
+  const rateQuantity = isGold ? numericGoldWeight : isEdit ? account.currentBalance : numericBalance;
+
+  // طلا و رمزارز واحد پول ندارند (همیشه معادل ریالی‌شان از فیلد نرخ/وزن حساب می‌شود)،
+  // و حساب ارزی دیگر نباید بشود روی ریال/تومان گذاشت — همان چیزی که قبلاً اشتباه بود.
+  const showCurrencyField = !isGold && !isCrypto;
+  const currencyOptions = isCurrency ? FOREIGN_CURRENCIES : RIAL_CURRENCIES;
+
+  const handleTypeChange = (next: number) => {
+    setType(next);
+    setCurrency((current) => {
+      if (next === AccountType.Gold || next === AccountType.Crypto) return 'IRR';
+      if (next === AccountType.Currency) {
+        return FOREIGN_CURRENCIES.some((c) => c.value === current) ? current : 'USD';
+      }
+      return RIAL_CURRENCIES.some((c) => c.value === current) ? current : 'IRR';
+    });
+  };
 
   /** بانک از روی شمارهٔ کارت تشخیص داده می‌شود؛ انتخاب دستی بر آن اولویت دارد. */
   const detected = useMemo(() => detectBank(cardDigits, undefined), [cardDigits]);
@@ -202,22 +236,24 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
         icon={<Wallet size={16} />}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <SelectField label="نوع حساب" value={type} onChange={(event) => setType(Number(event.target.value))}>
+      <div className={cx('grid gap-4', showCurrencyField && 'sm:grid-cols-2')}>
+        <SelectField
+          label="نوع حساب"
+          value={type}
+          onChange={(event) => handleTypeChange(Number(event.target.value))}
+        >
           {ACCOUNT_TYPES.map((value) => (
             <option key={value} value={value}>{ACCOUNT_TYPE_LABEL[value] ?? 'حساب'}</option>
           ))}
         </SelectField>
 
-        <SelectField label="واحد پول" value={currency} onChange={(event) => setCurrency(event.target.value)}>
-          <option value="IRR">ریال</option>
-          <option value="IRT">تومان</option>
-          <option value="USD">دلار آمریکا</option>
-          <option value="EUR">یورو</option>
-          <option value="GBP">پوند</option>
-          <option value="AED">درهم امارات</option>
-          <option value="TRY">لیر ترکیه</option>
-        </SelectField>
+        {showCurrencyField && (
+          <SelectField label="واحد پول" value={currency} onChange={(event) => setCurrency(event.target.value)}>
+            {currencyOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </SelectField>
+        )}
       </div>
 
       {/* موجودی فقط در زمان ساخت قابل تعیین است؛ در ویرایش با تراکنش اصلاحی درست می‌شود */}
@@ -362,22 +398,32 @@ export function AccountForm({ account, onDone }: AccountFormProps) {
         </div>
       )}
 
-      {/* نرخ روز — فعلاً دستی؛ برای محاسبهٔ معادل ریالی */}
+      {/* نرخ روز — فعلاً دستی؛ برای محاسبهٔ ارزش روز */}
       {showRate && (
-        <div className="border-t border-slate-500/10 pt-5">
+        <div className="space-y-3 border-t border-slate-500/10 pt-5">
           <TextField
-            label={`نرخ هر واحد ${isCurrency ? currencyLabel(currency) : cryptoSymbol || 'واحد'} (ریال)`}
+            label={
+              isGold
+                ? `نرخ هر گرم طلای ${toFa(goldPurity)} عیار به ریال`
+                : `نرخ هر ${isCurrency ? currencyLabel(currency) : cryptoSymbol || 'واحد رمزارز'} به ریال`
+            }
             inputMode="decimal"
             placeholder="۰"
             value={manualRate}
             onChange={(event) => setManualRate(event.target.value)}
             suffix="ریال"
-            hint={
-              rialEquivalent(rateQuantity, numericRate) !== undefined
-                ? `معادل تقریبی موجودی: ${formatCurrency(rialEquivalent(rateQuantity, numericRate)!, 'IRR')}`
-                : 'فعلاً دستی وارد کنید — بعداً امکان دریافت خودکار نرخ روز اضافه می‌شود'
-            }
+            hint="فعلاً دستی وارد کنید — بعداً امکان دریافت خودکار نرخ روز اضافه می‌شود"
           />
+          <div className="rounded-2xl bg-brand-500/10 px-4 py-3.5">
+            <p className="text-[11px] text-dim">
+              {isGold ? 'ارزش روز طلا (تقریبی، از وزن × نرخ)' : 'معادل تقریبی موجودی به ریال'}
+            </p>
+            <p className="num mt-1 text-base font-extrabold">
+              {rialEquivalent(rateQuantity, numericRate) !== undefined
+                ? formatCurrency(rialEquivalent(rateQuantity, numericRate)!, 'IRR')
+                : '—'}
+            </p>
+          </div>
         </div>
       )}
 

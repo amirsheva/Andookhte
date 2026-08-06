@@ -1,13 +1,46 @@
 import { useRef, useState, type MouseEvent } from 'react';
-import { Eye, EyeOff, Wallet } from 'lucide-react';
+import { Banknote, Bitcoin, CreditCard, Eye, EyeOff, Gem, PiggyBank } from 'lucide-react';
 import type { Account } from '../api';
 import { ACCOUNT_TYPE_LABEL, AccountType } from '../api';
-import { detectBank, isKnownBank } from '../lib/banks';
+import { detectBank, isKnownBank, type BankBrand } from '../lib/banks';
 import {
   currencyLabel, currencySymbol, cx, formatCardNumber, formatCurrency, formatNumber,
   maskCardNumber, rialEquivalent, toFa,
 } from '../lib/format';
 import { AnimatedNumber } from './ui/AnimatedNumber';
+
+/**
+ * برای انواع غیربانکی، برند کارت همیشه به رنگ خنثای پیش‌فرض می‌افتاد و همه‌شان
+ * یک شکل به‌نظر می‌رسیدند. هر نوع حساب رنگ خودش را می‌گیرد تا در نگاه اول
+ * (بدون خواندن متن) نوع حساب مشخص باشد.
+ */
+const TYPE_THEME: Partial<Record<number, BankBrand>> = {
+  [AccountType.Cash]: {
+    key: 'cash', name: 'نقدی',
+    gradient: 'linear-gradient(135deg,#14532d 0%,#22c55e 55%,#052e16 100%)',
+    accent: '#4ade80', ink: '#f0fdf4',
+  },
+  [AccountType.SavingsFund]: {
+    key: 'savings', name: 'صندوق پس‌انداز',
+    gradient: 'linear-gradient(135deg,#083344 0%,#0891b2 55%,#042f3d 100%)',
+    accent: '#22d3ee', ink: '#ecfeff',
+  },
+  [AccountType.Gold]: {
+    key: 'gold', name: 'طلا',
+    gradient: 'linear-gradient(135deg,#78350f 0%,#d97706 45%,#fbbf24 75%,#78350f 100%)',
+    accent: '#fde68a', ink: '#1c1917',
+  },
+  [AccountType.Currency]: {
+    key: 'currency', name: 'ارز',
+    gradient: 'linear-gradient(135deg,#0c4a6e 0%,#0ea5e9 55%,#082f49 100%)',
+    accent: '#7dd3fc', ink: '#f0f9ff',
+  },
+  [AccountType.Crypto]: {
+    key: 'crypto', name: 'رمزارز',
+    gradient: 'linear-gradient(135deg,#3b0764 0%,#9333ea 55%,#1e1b4b 100%)',
+    accent: '#c4b5fd', ink: '#faf5ff',
+  },
+};
 
 interface BankCardProps {
   account: Account;
@@ -23,24 +56,37 @@ interface BankCardProps {
 export function BankCard({
   account, compact = false, onClick, className, index = 0, startRevealed = false,
 }: BankCardProps) {
-  const brand = detectBank(account.cardNumber, account.bankName);
-  const typeLabel = ACCOUNT_TYPE_LABEL[account.type] ?? 'حساب';
-
-  // اگر بانک شناسایی نشده باشد، عنوان حساب جای نام بانک می‌نشیند تا متن تکراری یا بی‌معنا نمانَد
-  const known = isKnownBank(brand);
-  const headline = known ? brand.name : account.title;
-  const subtitle = known ? `${account.title} · ${typeLabel}` : typeLabel;
-
   const isBank = account.type === AccountType.Bank;
+  const isCash = account.type === AccountType.Cash;
+  const isSavings = account.type === AccountType.SavingsFund;
   const isGold = account.type === AccountType.Gold;
   const isCrypto = account.type === AccountType.Crypto;
   const isCurrency = account.type === AccountType.Currency;
+
+  const bankBrand = detectBank(account.cardNumber, account.bankName);
+  const typeLabel = ACCOUNT_TYPE_LABEL[account.type] ?? 'حساب';
+
+  // اگر بانک شناسایی نشده باشد، عنوان حساب جای نام بانک می‌نشیند تا متن تکراری یا بی‌معنا نمانَد
+  const known = isBank && isKnownBank(bankBrand);
+  const headline = known ? bankBrand.name : account.title;
+  const subtitle = known ? `${account.title} · ${typeLabel}` : typeLabel;
+
+  // رنگ کارت: بانک از روی برند تشخیص داده می‌شود، بقیهٔ انواع رنگ اختصاصی خودشان را دارند
+  // تا بدون خواندن متن هم بشود فهمید حساب طلاست یا ارز یا رمزارز.
+  const brand = isBank ? bankBrand : (TYPE_THEME[account.type] ?? bankBrand);
+  const symbol = isCurrency ? currencySymbol(account.currencyCode) : undefined;
+  const TypeIcon = isGold ? Gem : isCrypto ? Bitcoin : isSavings ? PiggyBank : isCash ? Banknote : CreditCard;
+
   const balanceSuffix = isCrypto
     ? account.cryptoSymbol || 'واحد'
     : isCurrency
-      ? `${currencyLabel(account.currencyCode)} ${currencySymbol(account.currencyCode)}`.trim()
+      ? symbol || currencyLabel(account.currencyCode)
       : currencyLabel(account.currencyCode);
-  const rial = (isCrypto || isCurrency) ? rialEquivalent(account.currentBalance, account.manualRateIrr) : undefined;
+  const rial = isGold
+    ? rialEquivalent(account.goldWeightGrams ?? 0, account.manualRateIrr)
+    : (isCrypto || isCurrency)
+      ? rialEquivalent(account.currentBalance, account.manualRateIrr)
+      : undefined;
 
   const ref = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
@@ -115,7 +161,11 @@ export function BankCard({
               className="grid h-9 w-9 shrink-0 place-items-center rounded-xl"
               style={{ background: 'rgb(255 255 255 / .14)' }}
             >
-              <Wallet size={16} />
+              {symbol ? (
+                <span className="text-base font-extrabold">{symbol}</span>
+              ) : (
+                <TypeIcon size={16} />
+              )}
             </div>
           </div>
 
@@ -144,6 +194,7 @@ export function BankCard({
                   <AnimatedNumber
                     value={account.currentBalance}
                     suffix={balanceSuffix}
+                    fractionDigits={isCrypto ? 4 : isCurrency ? 2 : 0}
                     className="text-xl font-extrabold sm:text-2xl"
                   />
                 ) : (
@@ -165,7 +216,13 @@ export function BankCard({
             </div>
 
             {revealed && rial !== undefined && (
-              <p className="num mt-1 text-[11px] opacity-70">≈ {formatCurrency(rial, 'IRR')}</p>
+              <p
+                className="num mt-1.5 inline-flex w-fit items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold"
+                style={{ background: 'rgb(255 255 255 / .14)' }}
+              >
+                {isGold ? 'ارزش روز ≈ ' : '≈ '}
+                {formatCurrency(rial, 'IRR')}
+              </p>
             )}
 
             {isBank && (

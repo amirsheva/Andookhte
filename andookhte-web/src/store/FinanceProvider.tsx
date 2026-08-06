@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   TransactionType,
+  bulkDeleteTransactions,
   createAccount,
   createTransaction,
   deleteAccount,
   deleteTransaction,
   getAccounts,
   getTransactionPage,
+  importTransactionsExcel,
   readErrorMessage,
   updateAccount,
   updateTransaction,
   type Account,
+  type BulkOperationResult,
   type CreateAccountInput,
   type CreateTransactionInput,
   type Transaction,
@@ -128,6 +131,24 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
+  const bulkRemoveTransactions = useCallback(
+    async (ids: string[]): Promise<BulkOperationResult> => {
+      const result = await bulkDeleteTransactions(ids);
+      await refresh();
+      return result;
+    },
+    [refresh],
+  );
+
+  const importTransactions = useCallback(
+    async (file: File): Promise<BulkOperationResult> => {
+      const result = await importTransactionsExcel(file);
+      await refresh();
+      return result;
+    },
+    [refresh],
+  );
+
   const transfer = useCallback(
     async (input: {
       amount: number;
@@ -191,6 +212,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       addTransaction,
       editTransaction,
       removeTransaction,
+      bulkRemoveTransactions,
+      importTransactions,
       transfer,
       addAccount,
       editAccount,
@@ -199,7 +222,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     }),
     [
       accounts, transactions, loading, loadingMore, totalTransactions, hasMore, error,
-      refresh, loadMore, addTransaction, editTransaction, removeTransaction, transfer,
+      refresh, loadMore, addTransaction, editTransaction, removeTransaction,
+      bulkRemoveTransactions, importTransactions, transfer,
       addAccount, editAccount, removeAccount, accountById,
     ],
   );

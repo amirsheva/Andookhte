@@ -1,13 +1,14 @@
 import { useState, type FormEvent } from 'react';
 import {
-  AtSign, BadgeCheck, Check, KeyRound, ShieldAlert, Smartphone, User,
+  AtSign, BadgeCheck, Building2, Check, KeyRound, ShieldAlert, Smartphone, User,
 } from 'lucide-react';
 import {
-  ContactChannel, WORKSPACE_ROLE_LABEL, profileApi, readErrorMessage,
+  ContactChannel, WORKSPACE_ROLE_LABEL, WorkspaceRole, profileApi, readErrorMessage,
 } from '../api';
-import { useAuth } from '../store/authContext';
+import { hasRole, useAuth } from '../store/authContext';
 import { authStorage } from '../lib/authStorage';
 import { cx, formatNumber, toEn } from '../lib/format';
+import { ApiKeysSection } from '../components/ApiKeysSection';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { TextField } from '../components/ui/Field';
@@ -40,10 +41,72 @@ export function Profile() {
         </div>
       </GlassCard>
 
+      <WorkspaceSection key={activeWorkspace?.id ?? 'none'} />
+      <ApiKeysSection key={`keys-${activeWorkspace?.id ?? 'none'}`} />
       <IdentitySection />
       <VerificationSection />
       <PasswordSection />
     </div>
+  );
+}
+
+/* ————————————————— فضای کاری ————————————————— */
+
+function WorkspaceSection() {
+  const { activeWorkspace, renameWorkspace } = useAuth();
+  const canRename = hasRole(activeWorkspace?.role, WorkspaceRole.Admin);
+
+  const [name, setName] = useState(activeWorkspace?.name ?? '');
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!activeWorkspace || !canRename) return null;
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setError(null);
+    setDone(false);
+
+    if (!name.trim()) return setError('نام فضای کاری را وارد کنید.');
+
+    setBusy(true);
+    try {
+      await renameWorkspace(name.trim());
+      setDone(true);
+    } catch (err) {
+      setError(readErrorMessage(err, 'تغییر نام فضای کاری با خطا مواجه شد.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <GlassCard className="animate-[rise_.6s_cubic-bezier(.16,1,.3,1)_.02s_both]">
+      <h3 className="text-sm font-bold">فضای کاری</h3>
+      <p className="mt-1 text-[11px] text-dim">نام فضای کاری فعلی — برای همهٔ اعضا نمایش داده می‌شود.</p>
+
+      <form onSubmit={handleSubmit} className="mt-5 flex flex-wrap items-end gap-3">
+        <TextField
+          label="نام فضای کاری"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          icon={<Building2 size={16} />}
+          className="min-w-48 flex-1"
+        />
+        <Button type="submit" loading={busy} variant={done ? 'success' : 'primary'}>
+          {done ? (
+            <>
+              <Check size={16} /> ذخیره شد
+            </>
+          ) : (
+            'ذخیرهٔ نام'
+          )}
+        </Button>
+      </form>
+
+      {error && <p className="mt-3 rounded-2xl bg-rose-500/10 px-4 py-2.5 text-xs text-rose-500">{error}</p>}
+    </GlassCard>
   );
 }
 

@@ -1,5 +1,6 @@
 using Andookhte.Application.Common.Interfaces;
 using Andookhte.Infrastructure.Debts;
+using Andookhte.Infrastructure.Excel;
 using Andookhte.Infrastructure.Persistence;
 using Andookhte.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
@@ -41,6 +42,7 @@ public static class DependencyInjection
 
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
         services.AddSingleton<ITokenService, JwtTokenService>();
+        services.AddScoped<ITransactionWorkbookService, ClosedXmlTransactionWorkbookService>();
 
         // تا وقتی کلید پنل پیامک یا تنظیمات SMTP تنظیم نشده باشند، همان کانال فقط
         // در لاگ می‌نویسد. این انتخاب در زمان راه‌اندازی انجام می‌شود تا در محیط

@@ -1,12 +1,15 @@
 using System.Text;
 using Andookhte.Api.Controllers;
 using Andookhte.Api.Middleware;
+using Andookhte.Api.Security;
 using Andookhte.Api.Services;
 using Andookhte.Application;
 using Andookhte.Application.Common.Interfaces;
+using Andookhte.Application.Features.ApiKeys;
 using Andookhte.Infrastructure;
 using Andookhte.Infrastructure.Persistence;
 using Andookhte.Infrastructure.Security;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
@@ -57,9 +60,16 @@ if (string.IsNullOrWhiteSpace(jwtOptions.SigningKey) || jwtOptions.SigningKey.Le
         "در توسعه از appsettings.Development.json و در تولید از متغیر محیطی استفاده کنید.");
 }
 
+// دو نوع اعتبارنامه پذیرفته می‌شود: توکن JWT کوتاه‌عمر (اپ وب) و کلید API طولانی‌عمر
+// (اتوماسیون‌هایی مثل شورتکات آیفون که نمی‌توانند جریان ورود معمولی را طی کنند).
+// «Smart» بر اساس پیشوند کلید تشخیص می‌دهد کدام هندلر باید درخواست را پردازش کند.
 builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+    .AddAuthentication(options =>
+    {
+        options.DefaultScheme = "Smart";
+        options.DefaultChallengeScheme = "Smart";
+    })
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -72,6 +82,22 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SigningKey)),
             // پیش‌فرض پنج دقیقه است و باعث می‌شود توکن منقضی همچنان پذیرفته شود
             ClockSkew = TimeSpan.FromSeconds(15)
+        };
+    })
+    .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
+        ApiKeyAuthenticationHandler.SchemeName, _ => { })
+    .AddPolicyScheme("Smart", "JWT یا کلید API", options =>
+    {
+        options.ForwardDefaultSelector = context =>
+        {
+            var raw = context.Request.Headers.Authorization.ToString();
+            var token = raw.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                ? raw["Bearer ".Length..].Trim()
+                : string.Empty;
+
+            return token.StartsWith(CreateApiKeyCommandHandler.Prefix, StringComparison.Ordinal)
+                ? ApiKeyAuthenticationHandler.SchemeName
+                : JwtBearerDefaults.AuthenticationScheme;
         };
     });
 

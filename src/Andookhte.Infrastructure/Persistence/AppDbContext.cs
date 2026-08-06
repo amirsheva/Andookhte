@@ -27,6 +27,7 @@ public class AppDbContext : DbContext, IAppDbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
 
     public DbSet<Workspace> Workspaces => Set<Workspace>();
     public DbSet<WorkspaceMember> WorkspaceMembers => Set<WorkspaceMember>();
@@ -78,6 +79,30 @@ public class AppDbContext : DbContext, IAppDbContext
             entity.HasQueryFilter(t => !t.IsDeleted && !t.User.IsDeleted);
 
             entity.Ignore(t => t.IsActive);
+        });
+
+        modelBuilder.Entity<ApiKey>(entity =>
+        {
+            entity.Property(k => k.Label).HasMaxLength(64).IsRequired();
+            entity.Property(k => k.KeyHash).HasMaxLength(128).IsRequired();
+            entity.Property(k => k.LastFour).HasMaxLength(8).IsRequired();
+
+            entity.HasIndex(k => k.KeyHash).IsUnique();
+            entity.HasIndex(k => new { k.UserId, k.RevokedAtUtc });
+
+            entity.HasOne(k => k.User)
+                  .WithMany()
+                  .HasForeignKey(k => k.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Workspace>()
+                  .WithMany()
+                  .HasForeignKey(k => k.WorkspaceId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            // مثل RefreshToken، فیلتر بر اساس فضای کاری نیست — چون هندلر احراز هویت
+            // باید بتواند بدون دانستنِ فضای کاری فعال (که خودش هنوز تعیین نشده)، کلید را پیدا کند.
+            entity.HasQueryFilter(k => !k.IsDeleted && !k.User.IsDeleted);
         });
 
         modelBuilder.Entity<OtpCode>(entity =>

@@ -24,6 +24,14 @@ public class WorkspacesController : ControllerBase
     public async Task<ActionResult<WorkspaceDto>> Create([FromBody] CreateWorkspaceCommand command, CancellationToken ct)
         => Ok(await _mediator.Send(command, ct));
 
+    /// <summary>ویرایش نام فضای کاری فعال (تعیین‌شده با هدر X-Workspace-Id).</summary>
+    [HttpPut]
+    public async Task<IActionResult> Update([FromBody] UpdateWorkspaceBody body, CancellationToken ct)
+    {
+        await _mediator.Send(new UpdateWorkspaceCommand(body.Name), ct);
+        return NoContent();
+    }
+
     /// <summary>اعضای فضای کاری فعال (تعیین‌شده با هدر X-Workspace-Id).</summary>
     [HttpGet("members")]
     public async Task<ActionResult<List<WorkspaceMemberDto>>> GetMembers(CancellationToken ct)
@@ -51,3 +59,5 @@ public class WorkspacesController : ControllerBase
 }
 
 public record UpdateMemberRoleBody(WorkspaceRole Role);
+
+public record UpdateWorkspaceBody(string Name);

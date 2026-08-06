@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type {
   Account,
+  BulkOperationResult,
   CreateAccountInput,
   CreateTransactionInput,
   Transaction,
@@ -25,6 +26,8 @@ export interface FinanceContextValue {
   addTransaction: (input: CreateTransactionInput) => Promise<void>;
   editTransaction: (id: string, input: UpdateTransactionInput) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
+  bulkRemoveTransactions: (ids: string[]) => Promise<BulkOperationResult>;
+  importTransactions: (file: File) => Promise<BulkOperationResult>;
   transfer: (input: {
     amount: number;
     sourceAccountId: string;
